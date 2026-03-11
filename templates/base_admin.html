@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .sidebar {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+    }
+    .sidebar .brand {
+        color: white;
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 30px;
+        display: block;
+    }
+    .sidebar a {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        display: block;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        transition: all 0.3s;
+    }
+    .sidebar a:hover, .sidebar a.active {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+    .sidebar i {
+        margin-right: 10px;
+    }
+    .main-content {
+        padding: 30px;
+    }
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    .card-header {
+        background: white;
+        border-bottom: 1px solid #eee;
+        font-weight: 600;
+    }
+    .navbar {
+        background: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar">
+            <span class="brand"><i class="bi bi-shield-lock"></i> Admin Panel</span>
+            <a href="/admin" class="{% block nav_dashboard %}{% endblock %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="/admin/settings" class="{% block nav_settings %}{% endblock %}"><i class="bi bi-gear"></i> Settings</a>
+            <a href="/logout" class="mt-4"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+        <div class="col-md-10 main-content">
+            <nav class="navbar navbar-expand-lg mb-4 rounded">
+                <div class="container-fluid">
+                    <span class="navbar-text">
+                        {% block navbar %}
+                        Welcome, <strong>{{ username }}</strong>
+                        {% endblock %}
+                    </span>
+                </div>
+            </nav>
+            
+            {% block page_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

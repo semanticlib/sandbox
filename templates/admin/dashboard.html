@@ -46,6 +46,7 @@
     </div>
 </div>
 
+{% if not lxd_connected %}
 <div class="card mt-4">
     <div class="card-header">
         <i class="bi bi-info-circle"></i> Quick Actions
@@ -61,4 +62,126 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+{% if lxd_connected and instances %}
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul"></i> Instances</span>
+        <form method="get" action="/" class="d-flex">
+            <input type="text" name="search" class="form-control form-control-sm me-2" placeholder="Search instances..." value="{{ search }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+            {% if search %}
+            <a href="/" class="btn btn-sm btn-outline-secondary ms-1"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instance in instances %}
+                    <tr>
+                        <td><strong>{{ instance.name }}</strong></td>
+                        <td>{{ instance.type }}</td>
+                        <td>
+                            {% if instance.status == 'Running' %}
+                            <span class="badge bg-success">Running</span>
+                            {% elif instance.status == 'Stopped' %}
+                            <span class="badge bg-secondary">Stopped</span>
+                            {% else %}
+                            <span class="badge bg-warning">{{ instance.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ instance.cpu if instance.cpu != 'N/A' else 'N/A' }}</td>
+                        <td>{{ instance.memory|filesizeformat if instance.memory != 'N/A' else 'N/A' }}</td>
+                        <td>
+                            {% if instance.status == 'Running' %}
+                            <button class="btn btn-sm btn-danger" onclick="stopInstance('{{ instance.name }}')" title="Stop">
+                                <i class="bi bi-stop-fill"></i>
+                            </button>
+                            {% else %}
+                            <button class="btn btn-sm btn-success" onclick="startInstance('{{ instance.name }}')" title="Start">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if total_instances > 10 %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}">Previous</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Page {{ page }}</span></li>
+                {% if instances|length == 10 %}
+                <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}">Next</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div id="action-result" style="display:none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function startInstance(name) {
+    const resultDiv = document.getElementById('action-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Starting instance...</div>';
+    
+    try {
+        const response = await fetch(`/instances/${name}/start`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.message}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error: ${error.message}</div>`;
+    }
+}
+
+async function stopInstance(name) {
+    const resultDiv = document.getElementById('action-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Stopping instance...</div>';
+    
+    try {
+        const response = await fetch(`/instances/${name}/stop`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.message}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error: ${error.message}</div>`;
+    }
+}
+</script>
 {% endblock %}

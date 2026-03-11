@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from jinja2 import filters
 
 from database import engine, get_db, Base
 from models import AdminUser, LXDSettings
@@ -17,6 +18,8 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Admin Panel")
 
 templates = Jinja2Templates(directory="templates")
+# Add filesizeformat filter
+templates.env.filters['filesizeformat'] = filters.do_filesizeformat
 
 
 @app.exception_handler(404)
@@ -183,12 +186,15 @@ async def logout():
 async def dashboard(
     request: Request,
     user: AdminUser = Depends(require_auth),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    page: int = 1,
+    search: str = ""
 ):
     """Admin dashboard with LXD instance stats"""
     total_instances = 0
     running_instances = 0
     lxd_connected = False
+    instances = []
     
     try:
         settings = db.query(LXDSettings).first()
@@ -209,10 +215,55 @@ async def dashboard(
                     key=settings.client_key
                 )
             if client:
-                instances = client.instances.all()
-                total_instances = len(instances)
-                running_instances = sum(1 for i in instances if i.status == "Running")
+                all_instances = client.instances.all()
+                total_instances = len(all_instances)
+                running_instances = sum(1 for i in all_instances if i.status == "Running")
                 lxd_connected = True
+                
+                # Get instance details
+                for inst in all_instances:
+                    try:
+                        # Get instance state for CPU, memory info
+                        try:
+                            state = inst.state
+                            # Access state properties safely
+                            cpu = getattr(state, 'cpu', None)
+                            memory = getattr(state, 'memory', None)
+                            # Handle None values
+                            if cpu is None:
+                                cpu = 'N/A'
+                            if memory is None:
+                                memory = 'N/A'
+                        except Exception as e:
+                            cpu = 'N/A'
+                            memory = 'N/A'
+                        
+                        instances.append({
+                            'name': inst.name,
+                            'status': inst.status,
+                            'type': inst.type,
+                            'cpu': cpu,
+                            'memory': memory,
+                        })
+                    except Exception:
+                        instances.append({
+                            'name': inst.name,
+                            'status': inst.status,
+                            'type': inst.type,
+                            'cpu': 'N/A',
+                            'memory': 'N/A',
+                        })
+                
+                # Filter by search
+                if search:
+                    instances = [i for i in instances if search.lower() in i['name'].lower()]
+                
+                # Paginate
+                per_page = 10
+                total_pages = (len(instances) + per_page - 1) // per_page
+                start = (page - 1) * per_page
+                end = start + per_page
+                instances = instances[start:end]
     except Exception:
         lxd_connected = False
     
@@ -223,7 +274,10 @@ async def dashboard(
         "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_instances": total_instances,
         "running_instances": running_instances,
-        "lxd_connected": lxd_connected
+        "lxd_connected": lxd_connected,
+        "instances": instances,
+        "page": page,
+        "search": search
     })
 
 
@@ -375,6 +429,50 @@ async def generate_certificate(request: Request):
             "key": key_pem,
             "message": "Certificate generated! Copy the certificate and add it to LXD trust store."
         })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.post("/instances/{instance_name}/start")
+async def start_instance(instance_name: str, request: Request, db: Session = Depends(get_db)):
+    """Start an LXD instance"""
+    settings = db.query(LXDSettings).first()
+    
+    if not settings:
+        return JSONResponse({"success": False, "message": "LXD not configured"})
+    
+    try:
+        from lxd_client import get_lxd_client
+        if settings.use_socket:
+            client = get_lxd_client(use_socket=True, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
+        else:
+            client = get_lxd_client(settings.server_url, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
+        
+        instance = client.instances.get(instance_name)
+        instance.start()
+        return JSONResponse({"success": True, "message": f"Instance {instance_name} started"})
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.post("/instances/{instance_name}/stop")
+async def stop_instance(instance_name: str, request: Request, db: Session = Depends(get_db)):
+    """Stop an LXD instance"""
+    settings = db.query(LXDSettings).first()
+    
+    if not settings:
+        return JSONResponse({"success": False, "message": "LXD not configured"})
+    
+    try:
+        from lxd_client import get_lxd_client
+        if settings.use_socket:
+            client = get_lxd_client(use_socket=True, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
+        else:
+            client = get_lxd_client(settings.server_url, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
+        
+        instance = client.instances.get(instance_name)
+        instance.stop()
+        return JSONResponse({"success": True, "message": f"Instance {instance_name} stopped"})
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)})
 

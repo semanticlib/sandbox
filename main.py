@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base
@@ -17,6 +18,26 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Admin Panel")
 
 templates = Jinja2Templates(directory="templates")
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    """Handle 404 errors"""
+    return templates.TemplateResponse("error.html", {
+        "request": request,
+        "status_code": 404,
+        "message": "The page you're looking for doesn't exist."
+    }, status_code=404)
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc):
+    """Handle general exceptions"""
+    return templates.TemplateResponse("error.html", {
+        "request": request,
+        "status_code": 500,
+        "message": "Something went wrong. Please try again later."
+    }, status_code=500)
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):

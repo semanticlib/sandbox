@@ -64,7 +64,7 @@
 </div>
 {% endif %}
 
-{% if lxd_connected and instances %}
+{% if lxd_connected %}
 <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-list-ul"></i> Instances</span>
@@ -77,6 +77,7 @@
         </form>
     </div>
     <div class="card-body">
+        {% if instances %}
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -121,7 +122,6 @@
                 </tbody>
             </table>
         </div>
-        
         {% if total_instances > 10 %}
         <nav>
             <ul class="pagination justify-content-center">
@@ -134,6 +134,11 @@
                 {% endif %}
             </ul>
         </nav>
+        {% endif %}
+        {% else %}
+        <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle"></i> No instances found{% if search %} matching "{{ search }}"{% endif %}
+        </div>
         {% endif %}
     </div>
 </div>

@@ -179,6 +179,61 @@ async def admin_dashboard(
     })
 
 
+@app.get("/admin/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    user: AdminUser = Depends(require_auth),
+    success: str = None,
+    error: str = None
+):
+    """Settings page - change password"""
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "username": user.username,
+        "success": success,
+        "error": error
+    })
+
+
+@app.post("/admin/settings/change-password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
+    """Handle password change"""
+    if len(new_password) < 6:
+        return templates.TemplateResponse("settings.html", {
+            "request": request,
+            "username": user.username,
+            "error": "New password must be at least 6 characters"
+        })
+    
+    if new_password != confirm_password:
+        return templates.TemplateResponse("settings.html", {
+            "request": request,
+            "username": user.username,
+            "error": "New passwords do not match"
+        })
+    
+    if not verify_password(current_password, user.password_hash):
+        return templates.TemplateResponse("settings.html", {
+            "request": request,
+            "username": user.username,
+            "error": "Current password is incorrect"
+        })
+    
+    # Update password
+    user.password_hash = get_password_hash(new_password)
+    user.is_first_login = False
+    db.commit()
+    
+    return RedirectResponse(url="/admin/settings?success=true", status_code=303)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, user: AdminUser = Depends(get_current_user)):
     """Root redirect"""

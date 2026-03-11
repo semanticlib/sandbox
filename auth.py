@@ -3,7 +3,7 @@ from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
 
-SECRET_KEY = "your-secret-key-change-in-production"
+SECRET_KEY = "c29tZSBzZWNyZXQgZm9yIGZhc3RhcGkgYXBw"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

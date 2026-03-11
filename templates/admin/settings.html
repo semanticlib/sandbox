@@ -5,141 +5,168 @@
 {% block nav_settings %}active{% endblock %}
 
 {% block page_content %}
-<div class="row">
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-key"></i> Change Password
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="lxd-tab" data-bs-toggle="tab" data-bs-target="#lxd" type="button" role="tab">
+            <i class="bi bi-hdd-network"></i> LXD Connection
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab">
+            <i class="bi bi-key"></i> Change Password
+        </button>
+    </li>
+</ul>
+
+<!-- Tabs Content -->
+<div class="tab-content" id="settingsTabsContent">
+    <!-- LXD Connection Tab -->
+    <div class="tab-pane fade show active" id="lxd" role="tabpanel">
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-hdd-network"></i> LXD Server Connection
+                    </div>
+                    <div class="card-body">
+                        {% if lxd_success %}
+                        <div class="alert alert-success" role="alert">
+                            {{ lxd_success }}
+                        </div>
+                        {% endif %}
+
+                        {% if lxd_error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ lxd_error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="/settings/lxd" id="lxd-form">
+                            <div class="mb-3">
+                                <label for="connection_type" class="form-label">Connection Type</label>
+                                <select class="form-select" id="connection_type" name="connection_type" onchange="toggleConnectionFields()">
+                                    <option value="socket" {{ 'selected' if lxd_settings and lxd_settings.use_socket else '' }}>Unix Socket (Local)</option>
+                                    <option value="https" {{ 'selected' if lxd_settings and lxd_settings.server_url and not lxd_settings.use_socket else '' }}>HTTPS (Remote)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="server-url-group">
+                                <label for="server_url" class="form-label">Server URL</label>
+                                <input type="url" class="form-control" id="server_url" name="server_url"
+                                       value="{{ lxd_settings.server_url if lxd_settings and lxd_settings.server_url else '' }}"
+                                       placeholder="https://192.168.1.100:8443">
+                                <small class="text-muted">LXD server address with port</small>
+                            </div>
+
+                            <div class="mb-3" id="socket-path-group" style="display: {{ 'block' if lxd_settings and lxd_settings.use_socket else 'none' }};">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle"></i> Will connect to local LXD via Unix socket
+                                </div>
+                            </div>
+
+                            <div class="mb-3" id="client-cert-group">
+                                <label for="client_cert" class="form-label d-flex justify-content-between align-items-center">
+                                    <span>Client Certificate</span>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="generateCertificate()">
+                                        <i class="bi bi-shield-lock"></i> Generate
+                                    </button>
+                                </label>
+                                <textarea class="form-control" id="client_cert" name="client_cert" rows="4"
+                                          placeholder="-----BEGIN CERTIFICATE-----...">{{ lxd_settings.client_cert if lxd_settings else '' }}</textarea>
+                            </div>
+                            <div class="mb-3" id="client-key-group">
+                                <label for="client_key" class="form-label">Client Key</label>
+                                <textarea class="form-control" id="client_key" name="client_key" rows="4"
+                                          placeholder="-----BEGIN PRIVATE KEY-----...">{{ lxd_settings.client_key if lxd_settings else '' }}</textarea>
+                            </div>
+                            <div class="mb-3 form-check" id="verify-ssl-group">
+                                <input type="checkbox" class="form-check-input" id="verify_ssl" name="verify_ssl"
+                                       {{ 'checked' if lxd_settings and lxd_settings.verify_ssl else '' }}>
+                                <label class="form-check-label" for="verify_ssl">Verify SSL Certificate</label>
+                            </div>
+                            <input type="hidden" id="use_socket" name="use_socket" value="{{ 'on' if lxd_settings and lxd_settings.use_socket else 'off' }}">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Save Settings
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="testConnection()">
+                                    <i class="bi bi-wifi"></i> Test Connection
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                {% if password_success %}
-                <div class="alert alert-success" role="alert">
-                    Password changed successfully!
+
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-info-circle"></i> Setup Instructions (LXD)
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-primary">Unix Socket (Local LXD - Recommended):</h6>
+                        <ol class="mb-3 text-muted" style="font-size: 14px;">
+                            <li>Select <strong>Unix Socket (Local)</strong> as Connection Type</li>
+                            <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
+                        </ol>
+                        <hr>
+                        <h6 class="text-primary">HTTPS (Remote LXD):</h6>
+                        <ol class="mb-0 text-muted" style="font-size: 14px;">
+                            <li>Select <strong>HTTPS (Remote)</strong> as Connection Type</li>
+                            <li>Click <strong>Generate</strong> to create client certificates</li>
+                            <li><strong>Copy the Certificate</strong> content (auto-filled in the form)</li>
+                            <li>In your <strong>LXD terminal</strong>, run: <code class="d-inline bg-light p-1 rounded">lxc config trust add</code></li>
+                            <li>Paste the certificate when prompted</li>
+                            <li>Enter Server URL: <code>https://&lt;lxd-ip&gt;:8443</code></li>
+                            <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
+                        </ol>
+                    </div>
                 </div>
-                {% endif %}
-                
-                {% if password_error %}
-                <div class="alert alert-danger" role="alert">
-                    {{ password_error }}
-                </div>
-                {% endif %}
-                
-                <form method="post" action="/settings/change-password">
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label">Current Password</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">New Password</label>
-                        <input type="password" class="form-control" id="new_password" name="new_password" required placeholder="At least 6 characters">
-                    </div>
-                    <div class="mb-4">
-                        <label for="confirm_password" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg"></i> Update Password
-                    </button>
-                </form>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-hdd-network"></i> LXD Server Connection
-            </div>
-            <div class="card-body">
-                {% if lxd_success %}
-                <div class="alert alert-success" role="alert">
-                    {{ lxd_success }}
-                </div>
-                {% endif %}
-                
-                {% if lxd_error %}
-                <div class="alert alert-danger" role="alert">
-                    {{ lxd_error }}
-                </div>
-                {% endif %}
-                
-                <form method="post" action="/settings/lxd" id="lxd-form">
-                    <div class="mb-3">
-                        <label for="connection_type" class="form-label">Connection Type</label>
-                        <select class="form-select" id="connection_type" name="connection_type" onchange="toggleConnectionFields()">
-                            <option value="socket" {{ 'selected' if lxd_settings and lxd_settings.use_socket else '' }}>Unix Socket (Local)</option>
-                            <option value="https" {{ 'selected' if lxd_settings and lxd_settings.server_url and not lxd_settings.use_socket else '' }}>HTTPS (Remote)</option>
-                        </select>
+
+    <!-- Password Change Tab -->
+    <div class="tab-pane fade" id="password" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-key"></i> Change Password
                     </div>
-                    
-                    <div class="mb-3" id="server-url-group">
-                        <label for="server_url" class="form-label">Server URL</label>
-                        <input type="url" class="form-control" id="server_url" name="server_url" 
-                               value="{{ lxd_settings.server_url if lxd_settings and lxd_settings.server_url else '' }}" 
-                               placeholder="https://192.168.1.100:8443">
-                        <small class="text-muted">LXD server address with port</small>
-                    </div>
-                    
-                    <div class="mb-3" id="socket-path-group" style="display: {{ 'block' if lxd_settings and lxd_settings.use_socket else 'none' }};">
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> Will connect to local LXD via Unix socket
+                    <div class="card-body">
+                        {% if password_success %}
+                        <div class="alert alert-success" role="alert">
+                            Password changed successfully!
                         </div>
-                    </div>
-                    
-                    <div class="mb-3" id="client-cert-group">
-                        <label for="client_cert" class="form-label d-flex justify-content-between align-items-center">
-                            <span>Client Certificate</span>
-                            <button type="button" class="btn btn-sm btn-outline-info" onclick="generateCertificate()">
-                                <i class="bi bi-shield-lock"></i> Generate
+                        {% endif %}
+
+                        {% if password_error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ password_error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="/settings/change-password">
+                            <div class="mb-3">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="current_password" name="current_password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password" required placeholder="At least 6 characters">
+                            </div>
+                            <div class="mb-4">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Update Password
                             </button>
-                        </label>
-                        <textarea class="form-control" id="client_cert" name="client_cert" rows="4" 
-                                  placeholder="-----BEGIN CERTIFICATE-----...">{{ lxd_settings.client_cert if lxd_settings else '' }}</textarea>
+                        </form>
                     </div>
-                    <div class="mb-3" id="client-key-group">
-                        <label for="client_key" class="form-label">Client Key</label>
-                        <textarea class="form-control" id="client_key" name="client_key" rows="4" 
-                                  placeholder="-----BEGIN PRIVATE KEY-----...">{{ lxd_settings.client_key if lxd_settings else '' }}</textarea>
-                    </div>
-                    <div class="mb-3 form-check" id="verify-ssl-group">
-                        <input type="checkbox" class="form-check-input" id="verify_ssl" name="verify_ssl" 
-                               {{ 'checked' if lxd_settings and lxd_settings.verify_ssl else '' }}>
-                        <label class="form-check-label" for="verify_ssl">Verify SSL Certificate</label>
-                    </div>
-                    <input type="hidden" id="use_socket" name="use_socket" value="{{ 'on' if lxd_settings and lxd_settings.use_socket else 'off' }}">
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Settings
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="testConnection()">
-                            <i class="bi bi-wifi"></i> Test Connection
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-info-circle"></i> Setup Instructions (LXD)
-            </div>
-            <div class="card-body">
-                <h6 class="text-primary">Unix Socket (Local LXD - Recommended):</h6>
-                <ol class="mb-3 text-muted" style="font-size: 14px;">
-                    <li>Select <strong>Unix Socket (Local)</strong> as Connection Type</li>
-                    <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
-                </ol>
-                <hr>
-                <h6 class="text-primary">HTTPS (Remote LXD):</h6>
-                <ol class="mb-0 text-muted" style="font-size: 14px;">
-                    <li>Select <strong>HTTPS (Remote)</strong> as Connection Type</li>
-                    <li>Click <strong>Generate</strong> to create client certificates</li>
-                    <li><strong>Copy the Certificate</strong> content (auto-filled in the form)</li>
-                    <li>In your <strong>LXD terminal</strong>, run: <code class="d-inline bg-light p-1 rounded">lxc config trust add</code></li>
-                    <li>Paste the certificate when prompted</li>
-                    <li>Enter Server URL: <code>https://&lt;lxd-ip&gt;:8443</code></li>
-                    <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
-                </ol>
+                </div>
             </div>
         </div>
     </div>
@@ -255,6 +282,18 @@ async function generateCertificate() {
 document.addEventListener('DOMContentLoaded', function() {
     // Unix Socket is the default selection in the dropdown
     toggleConnectionFields();
+    
+    // Always show LXD Connection tab by default on fresh page load
+    const lxdTab = new bootstrap.Tab(document.getElementById('lxd-tab'));
+    lxdTab.show();
+    
+    // Auto-switch to password tab only if there are password-related messages
+    const passwordSuccess = "{{ password_success if password_success else '' }}";
+    const passwordError = "{{ password_error if password_error else '' }}";
+    if (passwordSuccess || passwordError) {
+        const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
+        passwordTab.show();
+    }
 });
 </script>
 {% endblock %}

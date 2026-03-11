@@ -104,8 +104,29 @@
                             <span class="badge bg-warning">{{ instance.status }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ instance.cpu if instance.cpu != 'N/A' else 'N/A' }}</td>
-                        <td>{{ instance.memory|filesizeformat if instance.memory != 'N/A' else 'N/A' }}</td>
+                        <td>
+                            {% if instance.cpu == 'N/A' %}
+                            <span class="text-muted">N/A</span>
+                            {% elif instance.cpu == 'default' %}
+                            <span class="badge bg-secondary" title="LXD default (typically 1 core)">default</span>
+                            {% else %}
+                            <span class="badge bg-info">{{ instance.cpu }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if instance.memory == 'N/A' %}
+                            <span class="text-muted" title="No memory limit set (uses LXD default)">N/A</span>
+                            {% elif '/' in instance.memory %}
+                            {% set parts = instance.memory.split('/') %}
+                            {% set usage = parts[0]|int %}
+                            {% set allocated = parts[1] %}
+                            {{ usage|filesizeformat }} / {{ allocated }}
+                            {% elif instance.memory is number %}
+                            {{ instance.memory|filesizeformat }}
+                            {% else %}
+                            <span class="badge bg-info">{{ instance.memory }}</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if instance.status == 'Running' %}
                             <button class="btn btn-sm btn-danger" onclick="stopInstance('{{ instance.name }}')" title="Stop">

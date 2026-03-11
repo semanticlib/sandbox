@@ -223,21 +223,51 @@ async def dashboard(
                 # Get instance details
                 for inst in all_instances:
                     try:
-                        # Get instance state for CPU, memory info
-                        try:
-                            state = inst.state
-                            # Access state properties safely
-                            cpu = getattr(state, 'cpu', None)
-                            memory = getattr(state, 'memory', None)
-                            # Handle None values
-                            if cpu is None:
-                                cpu = 'N/A'
-                            if memory is None:
+                        cpu = 'N/A'
+                        memory_usage = 'N/A'
+                        memory_allocated = 'N/A'
+
+                        # Get allocated resources from instance config
+                        # CPU: limits.cpu (can be number of cores or CPU set)
+                        allocated_cpu = inst.config.get('limits.cpu')
+                        if allocated_cpu:
+                            cpu = allocated_cpu
+
+                        # Memory: limits.memory or boot.memory (with unit suffix like MB, GB)
+                        allocated_memory = inst.config.get('limits.memory') or inst.config.get('boot.memory')
+                        if allocated_memory:
+                            memory_allocated = allocated_memory
+
+                        # For running instances: get actual usage from state
+                        if inst.status == 'Running':
+                            try:
+                                state = inst.state
+                                cpu_state = getattr(state, 'cpu', None)
+                                memory_state = getattr(state, 'memory', None)
+
+                                # Extract actual usage values from state objects
+                                # For VMs: requires QEMU guest agent to be running
+                                if memory_state and hasattr(memory_state, 'usage'):
+                                    memory_usage = memory_state.usage  # in bytes
+                            except Exception:
+                                pass
+
+                        # Format memory as usage/allocated if both available
+                        if memory_usage != 'N/A' and memory_allocated != 'N/A':
+                            memory = f"{memory_usage}/{memory_allocated}"
+                        elif memory_allocated != 'N/A':
+                            memory = memory_allocated
+                        else:
+                            # No allocated memory set - VM uses LXD defaults
+                            if memory_usage != 'N/A':
+                                memory = memory_usage  # Show usage only
+                            else:
                                 memory = 'N/A'
-                        except Exception as e:
-                            cpu = 'N/A'
-                            memory = 'N/A'
-                        
+
+                        # If CPU is still N/A, check if it's a VM without limits
+                        if cpu == 'N/A' and inst.type == 'virtual-machine':
+                            cpu = 'default'  # LXD default CPU allocation
+
                         instances.append({
                             'name': inst.name,
                             'status': inst.status,

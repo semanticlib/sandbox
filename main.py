@@ -757,20 +757,51 @@ async def start_instance(instance_name: str, request: Request, db: Session = Dep
 async def stop_instance(instance_name: str, request: Request, db: Session = Depends(get_db)):
     """Stop an LXD instance"""
     settings = db.query(LXDSettings).first()
-    
+
     if not settings:
         return JSONResponse({"success": False, "message": "LXD not configured"})
-    
+
     try:
         from lxd_client import get_lxd_client
         if settings.use_socket:
             client = get_lxd_client(use_socket=True, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
         else:
             client = get_lxd_client(settings.server_url, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
-        
+
         instance = client.instances.get(instance_name)
         instance.stop()
         return JSONResponse({"success": True, "message": f"Instance {instance_name} stopped"})
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.delete("/instances/{instance_name}/delete")
+async def delete_instance(instance_name: str, request: Request, db: Session = Depends(get_db), force: bool = False):
+    """Delete an LXD instance"""
+    settings = db.query(LXDSettings).first()
+
+    if not settings:
+        return JSONResponse({"success": False, "message": "LXD not configured"})
+
+    try:
+        from lxd_client import get_lxd_client
+        if settings.use_socket:
+            client = get_lxd_client(use_socket=True, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
+        else:
+            client = get_lxd_client(settings.server_url, verify_ssl=settings.verify_ssl, cert=settings.client_cert, key=settings.client_key)
+
+        instance = client.instances.get(instance_name)
+        
+        # Stop instance first if running and not force delete
+        if instance.status == "Running" and not force:
+            return JSONResponse({
+                "success": False,
+                "message": f"Instance '{instance_name}' is running. Stop it first or check 'Force delete'."
+            })
+        
+        # Delete the instance
+        instance.delete(wait=True)
+        return JSONResponse({"success": True, "message": f"Instance '{instance_name}' deleted successfully"})
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)})
 

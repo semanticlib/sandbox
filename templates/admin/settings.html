@@ -13,6 +13,11 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vm-settings-tab" data-bs-toggle="tab" data-bs-target="#vm-settings" type="button" role="tab">
+            <i class="bi bi-pc-display"></i> VM Settings
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab">
             <i class="bi bi-key"></i> Change Password
         </button>
@@ -121,6 +126,59 @@
                             <li>Enter Server URL: <code>https://&lt;lxd-ip&gt;:8443</code></li>
                             <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
                         </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VM Settings Tab -->
+    <div class="tab-pane fade" id="vm-settings" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-pc-display"></i> Default VM Configuration
+                    </div>
+                    <div class="card-body">
+                        {% if vm_success %}
+                        <div class="alert alert-success" role="alert">
+                            {{ vm_success }}
+                        </div>
+                        {% endif %}
+
+                        {% if vm_error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ vm_error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="/settings/vm">
+                            <div class="mb-3">
+                                <label for="default_cpu" class="form-label">Default CPU Cores</label>
+                                <input type="number" class="form-control" id="default_cpu" name="cpu" 
+                                       value="{{ vm_settings.cpu if vm_settings else 2 }}" 
+                                       min="1" max="32" required>
+                                <small class="text-muted">Number of CPU cores for new VMs</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="default_memory" class="form-label">Default Memory (GiB)</label>
+                                <input type="number" class="form-control" id="default_memory" name="memory" 
+                                       value="{{ vm_settings.memory if vm_settings else 4 }}" 
+                                       min="1" max="128" required>
+                                <small class="text-muted">Amount of RAM in GiB for new VMs</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="default_disk" class="form-label">Default Disk Size (GiB)</label>
+                                <input type="number" class="form-control" id="default_disk" name="disk" 
+                                       value="{{ vm_settings.disk if vm_settings else 20 }}" 
+                                       min="5" max="500" required>
+                                <small class="text-muted">Disk size in GiB for new VMs</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Save VM Defaults
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -287,10 +345,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const lxdTab = new bootstrap.Tab(document.getElementById('lxd-tab'));
     lxdTab.show();
     
-    // Auto-switch to password tab only if there are password-related messages
+    // Auto-switch to specific tab if there are related messages
     const passwordSuccess = "{{ password_success if password_success else '' }}";
     const passwordError = "{{ password_error if password_error else '' }}";
-    if (passwordSuccess || passwordError) {
+    const vmSuccess = "{{ vm_success if vm_success else '' }}";
+    const vmError = "{{ vm_error if vm_error else '' }}";
+    
+    if (vmSuccess || vmError) {
+        const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
+        vmTab.show();
+    } else if (passwordSuccess || passwordError) {
         const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
         passwordTab.show();
     }

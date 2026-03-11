@@ -78,15 +78,21 @@
             </div>
             <div class="col-md-2">
                 <label for="instance_cpu" class="form-label">CPU (cores)</label>
-                <input type="number" class="form-control" id="instance_cpu" name="cpu" value="2" min="1" max="32" required>
+                <input type="number" class="form-control" id="instance_cpu" name="cpu" 
+                       value="{{ vm_defaults.cpu if vm_defaults else 2 }}" 
+                       min="1" max="32" required>
             </div>
             <div class="col-md-2">
                 <label for="instance_ram" class="form-label">RAM (GiB)</label>
-                <input type="number" class="form-control" id="instance_ram" name="ram" value="4" min="1" max="128" required>
+                <input type="number" class="form-control" id="instance_ram" name="ram" 
+                       value="{{ vm_defaults.memory if vm_defaults else 4 }}" 
+                       min="1" max="128" required>
             </div>
             <div class="col-md-2">
                 <label for="instance_disk" class="form-label">Disk (GiB)</label>
-                <input type="number" class="form-control" id="instance_disk" name="disk" value="20" min="5" max="500" required>
+                <input type="number" class="form-control" id="instance_disk" name="disk" 
+                       value="{{ vm_defaults.disk if vm_defaults else 20 }}" 
+                       min="5" max="500" required>
             </div>
             <div class="col-md-2">
                 <label for="instance_type" class="form-label">Type</label>

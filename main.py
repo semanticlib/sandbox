@@ -10,7 +10,7 @@ from jinja2 import filters
 from pydantic import BaseModel
 
 from database import engine, get_db, Base
-from models import AdminUser, LXDSettings
+from models import AdminUser, LXDSettings, VMDefaultSettings
 from auth import get_password_hash, verify_password, create_access_token
 from cert_utils import generate_client_certificate
 from jose import JWTError, jwt
@@ -505,7 +505,8 @@ async def dashboard(
         "lxd_connected": lxd_connected,
         "instances": instances,
         "page": page,
-        "search": search
+        "search": search,
+        "vm_defaults": db.query(VMDefaultSettings).first()
     })
 
 
@@ -517,19 +518,25 @@ async def settings_page(
     lxd_success: str = None,
     lxd_error: str = None,
     password_success: str = None,
-    password_error: str = None
+    password_error: str = None,
+    vm_success: str = None,
+    vm_error: str = None
 ):
-    """Settings page - change password and LXD configuration"""
+    """Settings page - change password, LXD configuration, and VM defaults"""
     lxd_settings = db.query(LXDSettings).first()
-    
+    vm_settings = db.query(VMDefaultSettings).first()
+
     return templates.TemplateResponse("admin/settings.html", {
         "request": request,
         "username": user.username,
         "lxd_settings": lxd_settings,
+        "vm_settings": vm_settings,
         "lxd_success": lxd_success,
         "lxd_error": lxd_error,
         "password_success": password_success,
-        "password_error": password_error
+        "password_error": password_error,
+        "vm_success": vm_success,
+        "vm_error": vm_error
     })
 
 
@@ -659,6 +666,34 @@ async def generate_certificate(request: Request):
         })
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.post("/settings/vm")
+async def save_vm_settings(
+    request: Request,
+    cpu: int = Form(...),
+    memory: int = Form(...),
+    disk: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Save default VM settings"""
+    settings = db.query(VMDefaultSettings).first()
+
+    if settings:
+        settings.cpu = cpu
+        settings.memory = memory
+        settings.disk = disk
+    else:
+        settings = VMDefaultSettings(
+            cpu=cpu,
+            memory=memory,
+            disk=disk
+        )
+        db.add(settings)
+
+    db.commit()
+
+    return RedirectResponse(url="/settings?vm_success=VM defaults saved successfully", status_code=303)
 
 
 @app.post("/instances/create")

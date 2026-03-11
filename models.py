@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
 
@@ -21,3 +22,12 @@ class LXDSettings(Base):
     client_cert = Column(Text, nullable=True)
     client_key = Column(Text, nullable=True)
     verify_ssl = Column(Boolean, default=True)
+
+
+class VMDefaultSettings(Base):
+    __tablename__ = "vm_default_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cpu = Column(Integer, default=2)
+    memory = Column(Integer, default=4)
+    disk = Column(Integer, default=20)

@@ -1,9 +1,13 @@
 from datetime import datetime
+import threading
+import uuid
+import time
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from jinja2 import filters
+from pydantic import BaseModel
 
 from database import engine, get_db, Base
 from models import AdminUser, LXDSettings
@@ -20,6 +24,200 @@ app = FastAPI(title="Admin Panel")
 templates = Jinja2Templates(directory="templates")
 # Add filesizeformat filter
 templates.env.filters['filesizeformat'] = filters.do_filesizeformat
+
+# In-memory task tracking for instance creation
+creation_tasks = {}
+
+
+class InstanceCreateRequest(BaseModel):
+    name: str
+    cpu: int
+    ram: int
+    disk: int
+    type: str = "virtual-machine"
+
+
+def track_instance_creation(task_id: str, name: str, cpu: int, ram: int, disk: int, instance_type: str, lxd_settings: dict):
+    """Background task to create an instance and track progress"""
+    try:
+        creation_tasks[task_id] = {
+            "progress": 5,
+            "message": "Connecting to LXD...",
+            "done": False,
+            "error": None
+        }
+        
+        from lxd_client import get_lxd_client
+        if lxd_settings["use_socket"]:
+            client = get_lxd_client(
+                use_socket=True,
+                verify_ssl=lxd_settings["verify_ssl"],
+                cert=lxd_settings["client_cert"],
+                key=lxd_settings["client_key"]
+            )
+        else:
+            client = get_lxd_client(
+                lxd_settings["server_url"],
+                verify_ssl=lxd_settings["verify_ssl"],
+                cert=lxd_settings["client_cert"],
+                key=lxd_settings["client_key"]
+            )
+        
+        creation_tasks[task_id]["progress"] = 15
+        creation_tasks[task_id]["message"] = f"Checking if instance '{name}' already exists..."
+        
+        # Check if instance already exists
+        try:
+            existing = client.instances.get(name)
+            if existing:
+                raise Exception(f"Instance '{name}' already exists")
+        except Exception:
+            pass  # Instance doesn't exist, which is what we want
+        
+        creation_tasks[task_id]["progress"] = 25
+        creation_tasks[task_id]["message"] = "Preparing instance configuration..."
+        
+        # Build instance configuration
+        config = {
+            "limits.cpu": str(cpu),
+            "limits.memory": f"{ram}GiB",
+        }
+        devices = {
+            "root": {
+                "type": "disk",
+                "path": "/",
+                "pool": "default",
+                "size": f"{disk}GiB"
+            }
+        }
+        
+        creation_tasks[task_id]["progress"] = 40
+        creation_tasks[task_id]["message"] = "Getting Ubuntu image..."
+        
+        # Create instance from image - LXD will auto-download if not present
+        try:
+            # First, try to find a local Ubuntu 24.04 image
+            image_alias = None
+            local_image = None
+            
+            for img in client.images.all():
+                # Check if it's Ubuntu 24.04 using properties dict
+                desc = img.properties.get('description', '').lower()
+                if "ubuntu" in desc and "24.04" in desc:
+                    local_image = img
+                    if img.aliases:
+                        image_alias = img.aliases[0]
+                    break
+            
+            if local_image:
+                # Use the local image fingerprint
+                image_source = {
+                    "type": "image",
+                    "fingerprint": local_image.fingerprint
+                }
+                creation_tasks[task_id]["message"] = f"Using local image: {local_image.fingerprint[:12]}"
+            else:
+                # Download from Ubuntu simplestreams
+                creation_tasks[task_id]["message"] = "Downloading Ubuntu 24.04 image..."
+                image_source = {
+                    "type": "image",
+                    "protocol": "simplestreams",
+                    "server": "https://cloud-images.ubuntu.com/releases",
+                    "alias": "24.04"
+                }
+            
+            if instance_type == "virtual-machine":
+                # Create VM using API directly (virtual_machines.create() has issues with image type)
+                creation_tasks[task_id]["message"] = "Creating virtual machine (downloading image if needed)..."
+                vm_config = {
+                    "limits.cpu": str(cpu),
+                    "limits.memory": f"{ram}GiB",
+                }
+                vm_devices = {
+                    "root": {
+                        "type": "disk",
+                        "path": "/",
+                        "pool": "default",
+                        "size": f"{disk}GiB"
+                    }
+                }
+                # Create VM with explicit type field
+                config_data = {
+                    "name": name,
+                    "source": image_source,
+                    "config": vm_config,
+                    "devices": vm_devices,
+                    "type": "virtual-machine"
+                }
+                # Use API directly
+                response = client.api.instances.post(json=config_data)
+                operation_id = response.json()["operation"].split("/")[-1]
+                
+                # Wait for operation to complete
+                while True:
+                    op = client.operations.get(operation_id)
+                    if op.status_code == 200:
+                        break
+                    time.sleep(1)
+                    # Safely get progress from metadata
+                    progress = 0
+                    if op.metadata:
+                        progress_val = op.metadata.get("progress", 0)
+                        # Progress can be a dict or a number
+                        if isinstance(progress_val, dict):
+                            progress = progress_val.get("progress", 0)
+                        elif isinstance(progress_val, (int, float)):
+                            progress = progress_val
+                    creation_tasks[task_id]["progress"] = min(60 + int(progress * 0.3), 90)
+            else:
+                # Create container
+                creation_tasks[task_id]["message"] = "Creating container (downloading image if needed)..."
+                container_config = {
+                    "limits.cpu": str(cpu),
+                    "limits.memory": f"{ram}GiB",
+                }
+                container_devices = {
+                    "root": {
+                        "type": "disk",
+                        "path": "/",
+                        "pool": "default",
+                        "size": f"{disk}GiB"
+                    }
+                }
+                config_data = {
+                    "name": name,
+                    "source": image_source,
+                    "config": container_config,
+                    "devices": container_devices
+                }
+                container = client.containers.create(config_data, wait=True)
+            
+            creation_tasks[task_id]["progress"] = 90
+            creation_tasks[task_id]["message"] = "Finalizing instance..."
+            time.sleep(1)
+            
+            creation_tasks[task_id]["progress"] = 100
+            creation_tasks[task_id]["message"] = f"Instance '{name}' created successfully!"
+            creation_tasks[task_id]["done"] = True
+            
+        except Exception as create_error:
+            raise create_error
+        
+    except Exception as e:
+        creation_tasks[task_id]["progress"] = 100
+        creation_tasks[task_id]["done"] = True
+        creation_tasks[task_id]["error"] = str(e)
+        creation_tasks[task_id]["message"] = "Failed"
+    
+    # Clean up old completed tasks after a delay
+    def cleanup_task():
+        time.sleep(300)  # Keep task for 5 minutes
+        if task_id in creation_tasks and creation_tasks[task_id]["done"]:
+            del creation_tasks[task_id]
+    
+    cleanup_thread = threading.Thread(target=cleanup_task)
+    cleanup_thread.daemon = True
+    cleanup_thread.start()
 
 
 @app.exception_handler(404)
@@ -461,6 +659,76 @@ async def generate_certificate(request: Request):
         })
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.post("/instances/create")
+async def create_instance(request: Request, db: Session = Depends(get_db)):
+    """Create a new instance (VM or container)"""
+    try:
+        data = await request.json()
+        req = InstanceCreateRequest(**data)
+        
+        # Validate instance name
+        if not req.name or not req.name.replace("-", "").replace("_", "").isalnum():
+            return JSONResponse({
+                "success": False,
+                "message": "Instance name must be alphanumeric (hyphens and underscores allowed)"
+            })
+
+        # Get LXD settings BEFORE starting background thread
+        settings = db.query(LXDSettings).first()
+        if not settings:
+            return JSONResponse({
+                "success": False,
+                "message": "LXD not configured. Please configure LXD in Settings first."
+            })
+
+        lxd_settings = {
+            "use_socket": settings.use_socket,
+            "server_url": settings.server_url,
+            "verify_ssl": settings.verify_ssl,
+            "client_cert": settings.client_cert,
+            "client_key": settings.client_key
+        }
+
+        # Generate task ID
+        task_id = str(uuid.uuid4())
+
+        # Start background task
+        thread = threading.Thread(
+            target=track_instance_creation,
+            args=(task_id, req.name, req.cpu, req.ram, req.disk, req.type, lxd_settings)
+        )
+        thread.daemon = True
+        thread.start()
+
+        return JSONResponse({
+            "success": True,
+            "task_id": task_id,
+            "message": f"Creating {req.type} '{req.name}'..."
+        })
+    except Exception as e:
+        print(f"[ERROR] create_instance: {e}")  # Error log
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.get("/instances/create/status/{task_id}")
+async def get_instance_creation_status(task_id: str):
+    """Get the status of an instance creation task"""
+    if task_id not in creation_tasks:
+        return JSONResponse({
+            "success": False,
+            "message": "Task not found"
+        })
+    
+    task = creation_tasks[task_id]
+    return JSONResponse({
+        "success": True,
+        "progress": task["progress"],
+        "message": task["message"],
+        "done": task["done"],
+        "error": task.get("error")
+    })
 
 
 @app.post("/instances/{instance_name}/start")

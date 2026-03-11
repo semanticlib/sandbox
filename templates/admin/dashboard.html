@@ -65,6 +65,54 @@
 {% endif %}
 
 {% if lxd_connected %}
+<!-- Create Instance Form -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-plus-circle"></i> Create New Instance
+    </div>
+    <div class="card-body">
+        <form id="create-instance-form" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="instance_name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="instance_name" name="name" placeholder="my-vm" required>
+            </div>
+            <div class="col-md-2">
+                <label for="instance_cpu" class="form-label">CPU (cores)</label>
+                <input type="number" class="form-control" id="instance_cpu" name="cpu" value="2" min="1" max="32" required>
+            </div>
+            <div class="col-md-2">
+                <label for="instance_ram" class="form-label">RAM (GiB)</label>
+                <input type="number" class="form-control" id="instance_ram" name="ram" value="4" min="1" max="128" required>
+            </div>
+            <div class="col-md-2">
+                <label for="instance_disk" class="form-label">Disk (GiB)</label>
+                <input type="number" class="form-control" id="instance_disk" name="disk" value="20" min="5" max="500" required>
+            </div>
+            <div class="col-md-2">
+                <label for="instance_type" class="form-label">Type</label>
+                <select class="form-select" id="instance_type" name="type">
+                    <option value="virtual-machine">VM</option>
+                    <option value="container">Container</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-plus-lg"></i> Create
+                </button>
+            </div>
+        </form>
+        <!-- Progress Bar -->
+        <div id="create-progress-container" class="mt-3" style="display: none;">
+            <div class="progress" style="height: 25px;">
+                <div id="create-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;"></div>
+            </div>
+            <p id="create-progress-text" class="text-muted mt-2 mb-0 small">Initializing...</p>
+        </div>
+        <!-- Result Message -->
+        <div id="create-result" class="mt-2" style="display: none;"></div>
+    </div>
+</div>
+
 <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-list-ul"></i> Instances</span>
@@ -170,15 +218,114 @@
 
 {% block extra_js %}
 <script>
+// Instance creation with progress tracking
+let createPollingInterval = null;
+
+document.getElementById('create-instance-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const progressContainer = document.getElementById('create-progress-container');
+    const progressBar = document.getElementById('create-progress-bar');
+    const progressText = document.getElementById('create-progress-text');
+    const resultDiv = document.getElementById('create-result');
+    
+    // Get form values
+    const formData = {
+        name: form.instance_name.value.trim(),
+        cpu: parseInt(form.instance_cpu.value),
+        ram: parseInt(form.instance_ram.value),
+        disk: parseInt(form.instance_disk.value),
+        type: form.instance_type.value
+    };
+    
+    // Disable form during creation
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+    progressContainer.style.display = 'block';
+    resultDiv.style.display = 'none';
+    progressBar.style.width = '0%';
+    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+    progressText.textContent = 'Initializing...';
+    
+    try {
+        // Start instance creation
+        const response = await fetch('/instances/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to create instance');
+        }
+        
+        const taskId = data.task_id;
+        progressText.textContent = data.message || 'Creating instance...';
+        
+        // Start polling for progress
+        createPollingInterval = setInterval(async () => {
+            try {
+                const statusResponse = await fetch(`/instances/create/status/${taskId}`);
+                const statusData = await statusResponse.json();
+                
+                if (statusData.success) {
+                    // Update progress
+                    const progress = statusData.progress || 0;
+                    progressBar.style.width = `${progress}%`;
+                    progressText.textContent = statusData.message || `Creating instance... ${progress}%`;
+                    
+                    if (statusData.done) {
+                        // Creation complete
+                        clearInterval(createPollingInterval);
+                        progressBar.className = 'progress-bar bg-success';
+                        
+                        if (statusData.error) {
+                            // Failed
+                            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${statusData.error}</div>`;
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Create';
+                        } else {
+                            // Success
+                            resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> Instance "${formData.name}" created successfully!</div>`;
+                            setTimeout(() => location.reload(), 2000);
+                        }
+                        resultDiv.style.display = 'block';
+                    }
+                } else {
+                    clearInterval(createPollingInterval);
+                    throw new Error(statusData.message || 'Failed to get status');
+                }
+            } catch (error) {
+                clearInterval(createPollingInterval);
+                throw error;
+            }
+        }, 1000); // Poll every second
+        
+    } catch (error) {
+        clearInterval(createPollingInterval);
+        progressBar.className = 'progress-bar bg-danger';
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Failed';
+        resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error: ${error.message}</div>`;
+        resultDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Create';
+    }
+});
+
 async function startInstance(name) {
     const resultDiv = document.getElementById('action-result');
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Starting instance...</div>';
-    
+
     try {
         const response = await fetch(`/instances/${name}/start`, { method: 'POST' });
         const data = await response.json();
-        
+
         if (data.success) {
             resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
             setTimeout(() => location.reload(), 1500);
@@ -194,11 +341,11 @@ async function stopInstance(name) {
     const resultDiv = document.getElementById('action-result');
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Stopping instance...</div>';
-    
+
     try {
         const response = await fetch(`/instances/${name}/stop`, { method: 'POST' });
         const data = await response.json();
-        
+
         if (data.success) {
             resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
             setTimeout(() => location.reload(), 1500);

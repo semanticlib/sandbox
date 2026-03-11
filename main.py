@@ -108,7 +108,7 @@ async def setup_admin(
     
     # Auto-login after setup
     access_token = create_access_token(data={"sub": admin.username})
-    response = RedirectResponse(url="/admin", status_code=303)
+    response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=1800)
     return response
 
@@ -151,8 +151,8 @@ async def login(
     # Create access token
     access_token = create_access_token(data={"sub": user.username})
     
-    # Redirect to admin dashboard
-    response = RedirectResponse(url="/admin", status_code=303)
+    # Redirect to dashboard
+    response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=1800)
     return response
 
@@ -165,8 +165,8 @@ async def logout():
     return response
 
 
-@app.get("/admin", response_class=HTMLResponse)
-async def admin_dashboard(
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(
     request: Request,
     user: AdminUser = Depends(require_auth)
 ):
@@ -179,7 +179,7 @@ async def admin_dashboard(
     })
 
 
-@app.get("/admin/settings", response_class=HTMLResponse)
+@app.get("/settings", response_class=HTMLResponse)
 async def settings_page(
     request: Request,
     user: AdminUser = Depends(require_auth),
@@ -195,7 +195,7 @@ async def settings_page(
     })
 
 
-@app.post("/admin/settings/change-password")
+@app.post("/settings/change-password")
 async def change_password(
     request: Request,
     current_password: str = Form(...),
@@ -234,14 +234,14 @@ async def change_password(
     return RedirectResponse(url="/admin/settings?success=true", status_code=303)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request, user: AdminUser = Depends(get_current_user)):
+@app.get("/root-redirect", response_class=HTMLResponse)
+async def root_redirect(request: Request, user: AdminUser = Depends(get_current_user)):
     """Root redirect"""
     db = next(get_db())
     if not admin_exists(db):
         return RedirectResponse(url="/setup")
     if user:
-        return RedirectResponse(url="/admin")
+        return RedirectResponse(url="/")
     return RedirectResponse(url="/login")
 
 

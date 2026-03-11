@@ -7,28 +7,40 @@
 {% block page_content %}
 <div class="row">
     <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-person-check"></i> Admin Status</h5>
-                <p class="card-text text-muted">Admin account is active and configured.</p>
-                <span class="badge bg-success">Active</span>
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-box"></i> Total Instances
+            </div>
+            <div class="card-body text-center">
+                <h1 class="display-4 fw-bold">{{ total_instances }}</h1>
+                <p class="text-muted">LXD containers/VMs</p>
             </div>
         </div>
     </div>
     <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-clock-history"></i> Last Login</h5>
-                <p class="card-text text-muted">{{ current_time }}</p>
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-play-circle"></i> Running Instances
+            </div>
+            <div class="card-body text-center">
+                <h1 class="display-4 fw-bold">{{ running_instances }}</h1>
+                <p class="text-muted">Currently active</p>
             </div>
         </div>
     </div>
     <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-shield-check"></i> Security</h5>
-                <p class="card-text text-muted">Your session is secure.</p>
-                <span class="badge bg-info">Protected</span>
+        <div class="card {{ 'border-success' if lxd_connected else 'border-danger' }}">
+            <div class="card-header {{ 'bg-success' if lxd_connected else 'bg-danger' }} text-white">
+                <i class="bi bi-hdd-network"></i> LXD Connection
+            </div>
+            <div class="card-body text-center">
+                {% if lxd_connected %}
+                <h1 class="display-4"><i class="bi bi-check-circle text-success"></i></h1>
+                <p class="text-muted">Connected</p>
+                {% else %}
+                <h1 class="display-4"><i class="bi bi-x-circle text-danger"></i></h1>
+                <p class="text-muted">Not configured</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -36,15 +48,17 @@
 
 <div class="card mt-4">
     <div class="card-header">
-        <i class="bi bi-info-circle"></i> Getting Started
+        <i class="bi bi-info-circle"></i> Quick Actions
     </div>
     <div class="card-body">
-        <p class="mb-0 text-muted">
-            Welcome to your admin dashboard! This is your control panel for managing the application.
-            {% if is_first_login %}
-            Since this is your first login, consider changing your default password in Settings.
-            {% endif %}
+        <p class="mb-3 text-muted">
+            Configure your LXD server connection in 
+            <a href="/settings"><i class="bi bi-gear"></i> Settings</a> to view instance statistics.
         </p>
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-lightbulb"></i> 
+            <strong>Tip:</strong> For local LXD, use <code>https://127.0.0.1:8443</code> with client certificates.
+        </div>
     </div>
 </div>
 {% endblock %}

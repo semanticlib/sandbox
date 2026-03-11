@@ -6,24 +6,24 @@
 
 {% block page_content %}
 <div class="row">
-    <div class="col-md-8">
-        <div class="card">
+    <div class="col-md-6">
+        <div class="card mb-4">
             <div class="card-header">
                 <i class="bi bi-key"></i> Change Password
             </div>
             <div class="card-body">
-                {% if success %}
+                {% if password_success %}
                 <div class="alert alert-success" role="alert">
                     Password changed successfully!
                 </div>
                 {% endif %}
-
-                {% if error %}
+                
+                {% if password_error %}
                 <div class="alert alert-danger" role="alert">
-                    {{ error }}
+                    {{ password_error }}
                 </div>
                 {% endif %}
-
+                
                 <form method="post" action="/settings/change-password">
                     <div class="mb-3">
                         <label for="current_password" class="form-label">Current Password</label>
@@ -44,21 +44,165 @@
             </div>
         </div>
     </div>
-
-    <div class="col-md-4">
-        <div class="card">
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
             <div class="card-header">
-                <i class="bi bi-info-circle"></i> Password Requirements
+                <i class="bi bi-hdd-network"></i> LXD Server Connection
             </div>
             <div class="card-body">
-                <ul class="mb-0 text-muted" style="font-size: 14px;">
-                    <li>Minimum 6 characters</li>
-                    <li>Use a mix of letters, numbers, and symbols</li>
-                    <li>Avoid common passwords</li>
-                    <li>Don't reuse old passwords</li>
-                </ul>
+                {% if lxd_success %}
+                <div class="alert alert-success" role="alert">
+                    {{ lxd_success }}
+                </div>
+                {% endif %}
+                
+                {% if lxd_error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ lxd_error }}
+                </div>
+                {% endif %}
+                
+                <form method="post" action="/settings/lxd" id="lxd-form">
+                    <div class="mb-3">
+                        <label for="server_url" class="form-label">Server URL</label>
+                        <input type="url" class="form-control" id="server_url" name="server_url" 
+                               value="{{ lxd_settings.server_url if lxd_settings else '' }}" 
+                               placeholder="https://192.168.1.100:8443" required>
+                        <small class="text-muted">WSL LXD server address with port</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="client_cert" class="form-label">
+                            Client Certificate
+                            <button type="button" class="btn btn-sm btn-outline-info float-end" onclick="generateCertificate()">
+                                <i class="bi bi-shield-lock"></i> Generate
+                            </button>
+                        </label>
+                        <textarea class="form-control" id="client_cert" name="client_cert" rows="4" 
+                                  placeholder="-----BEGIN CERTIFICATE-----...">{{ lxd_settings.client_cert if lxd_settings else '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="client_key" class="form-label">Client Key</label>
+                        <textarea class="form-control" id="client_key" name="client_key" rows="4" 
+                                  placeholder="-----BEGIN PRIVATE KEY-----...">{{ lxd_settings.client_key if lxd_settings else '' }}</textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="verify_ssl" name="verify_ssl" 
+                               {{ 'checked' if lxd_settings and lxd_settings.verify_ssl else '' }}>
+                        <label class="form-check-label" for="verify_ssl">Verify SSL Certificate</label>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Settings
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="testConnection()">
+                            <i class="bi bi-wifi"></i> Test Connection
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Setup Instructions (WSL LXD)
+            </div>
+            <div class="card-body">
+                <ol class="mb-0 text-muted" style="font-size: 14px;">
+                    <li>Click <strong>Generate</strong> to create client certificates</li>
+                    <li><strong>Copy the Certificate</strong> content (auto-filled in the form)</li>
+                    <li>In your <strong>WSL terminal</strong>, run:
+                        <code class="d-block mt-1 bg-light p-2 rounded">lxc config trust add</code>
+                    </li>
+                    <li>Enter a client name (e.g., <code>fastapi-client</code>)</li>
+                    <li>When prompted to paste certificate, <strong>paste the certificate</strong></li>
+                    <li>Enter Server URL: <code>https://&lt;wsl-ip&gt;:8443</code></li>
+                    <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
+                </ol>
+                <hr class="my-3">
+                <p class="text-muted mb-0" style="font-size: 13px;">
+                    <strong>Find WSL IP:</strong> Run <code class="bg-light p-1 rounded">ip addr show eth0 | grep inet</code> in WSL
+                </p>
             </div>
         </div>
     </div>
 </div>
+
+<div id="cert-alert" style="display:none;"></div>
+<div id="test-result" style="display:none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function testConnection() {
+    const resultDiv = document.getElementById('test-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Testing connection...</div>';
+    
+    try {
+        const response = await fetch('/settings/lxd/test', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> ${data.message}
+                </div>`;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> ${data.message}
+                </div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> Connection failed: ${error.message}
+            </div>`;
+    }
+}
+
+async function generateCertificate() {
+    const certField = document.getElementById('client_cert');
+    const keyField = document.getElementById('client_key');
+    const alertDiv = document.getElementById('cert-alert');
+    
+    certField.disabled = true;
+    keyField.disabled = true;
+    alertDiv.style.display = 'block';
+    alertDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Generating certificate...</div>';
+    
+    try {
+        const response = await fetch('/settings/lxd/generate-cert', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            certField.value = data.certificate;
+            keyField.value = data.key;
+            certField.disabled = false;
+            keyField.disabled = false;
+            alertDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> Certificate generated! 
+                    <strong>Copy the certificate above</strong> and add it to LXD in WSL using:
+                    <code class="d-block mt-2 bg-light p-2 rounded">lxc config trust add</code>
+                </div>`;
+        } else {
+            alertDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> Failed: ${data.message}
+                </div>`;
+            certField.disabled = false;
+            keyField.disabled = false;
+        }
+    } catch (error) {
+        alertDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> Error: ${error.message}
+            </div>`;
+        certField.disabled = false;
+        keyField.disabled = false;
+    }
+}
+</script>
 {% endblock %}

@@ -1,14 +1,13 @@
-import os
 from datetime import datetime
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base
-from models import AdminUser
+from models import AdminUser, LXDSettings
 from auth import get_password_hash, verify_password, create_access_token
+from cert_utils import generate_client_certificate
 from jose import JWTError, jwt
 from auth import SECRET_KEY, ALGORITHM
 
@@ -45,7 +44,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("access_token")
     if not token:
         return None
-    
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -96,28 +95,26 @@ async def setup_admin(
     """Handle setup form - create first admin"""
     if admin_exists(db):
         return RedirectResponse(url="/login")
-    
+
     if password != confirm_password:
         return templates.TemplateResponse("auth/setup.html", {
             "request": request,
             "error": "Passwords do not match"
         })
-    
+
     if len(password) < 6:
         return templates.TemplateResponse("auth/setup.html", {
             "request": request,
             "error": "Password must be at least 6 characters"
         })
-    
-    # Check if username already exists
+
     existing = db.query(AdminUser).filter(AdminUser.username == username).first()
     if existing:
         return templates.TemplateResponse("auth/setup.html", {
             "request": request,
             "error": "Username already taken"
         })
-    
-    # Create admin user
+
     admin = AdminUser(
         username=username,
         password_hash=get_password_hash(password),
@@ -126,8 +123,7 @@ async def setup_admin(
     )
     db.add(admin)
     db.commit()
-    
-    # Auto-login after setup
+
     access_token = create_access_token(data={"sub": admin.username})
     response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=1800)
@@ -140,7 +136,7 @@ async def login_page(request: Request, error: str = None):
     db = next(get_db())
     if not admin_exists(db):
         return RedirectResponse(url="/setup")
-    
+
     return templates.TemplateResponse("auth/login.html", {
         "request": request,
         "error": error
@@ -156,23 +152,20 @@ async def login(
 ):
     """Handle login form submission"""
     user = db.query(AdminUser).filter(AdminUser.username == username).first()
-    
+
     if not user or not verify_password(password, user.password_hash):
         return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Invalid username or password"
         })
-    
+
     if not user.is_active:
         return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Account is disabled"
         })
-    
-    # Create access token
+
     access_token = create_access_token(data={"sub": user.username})
-    
-    # Redirect to dashboard
     response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=1800)
     return response
@@ -189,14 +182,39 @@ async def logout():
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(
     request: Request,
-    user: AdminUser = Depends(require_auth)
+    user: AdminUser = Depends(require_auth),
+    db: Session = Depends(get_db)
 ):
-    """Admin dashboard page"""
+    """Admin dashboard with LXD instance stats"""
+    total_instances = 0
+    running_instances = 0
+    lxd_connected = False
+    
+    try:
+        settings = db.query(LXDSettings).first()
+        if settings and settings.client_cert and settings.client_key:
+            from lxd_client import get_lxd_client
+            client = get_lxd_client(
+                settings.server_url,
+                verify_ssl=settings.verify_ssl,
+                cert=settings.client_cert,
+                key=settings.client_key
+            )
+            instances = client.instances.all()
+            total_instances = len(instances)
+            running_instances = sum(1 for i in instances if i.status == "Running")
+            lxd_connected = True
+    except Exception:
+        lxd_connected = False
+    
     return templates.TemplateResponse("admin/dashboard.html", {
         "request": request,
         "username": user.username,
         "is_first_login": user.is_first_login,
-        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total_instances": total_instances,
+        "running_instances": running_instances,
+        "lxd_connected": lxd_connected
     })
 
 
@@ -204,15 +222,23 @@ async def dashboard(
 async def settings_page(
     request: Request,
     user: AdminUser = Depends(require_auth),
-    success: str = None,
-    error: str = None
+    db: Session = Depends(get_db),
+    lxd_success: str = None,
+    lxd_error: str = None,
+    password_success: str = None,
+    password_error: str = None
 ):
-    """Settings page - change password"""
+    """Settings page - change password and LXD configuration"""
+    lxd_settings = db.query(LXDSettings).first()
+    
     return templates.TemplateResponse("admin/settings.html", {
         "request": request,
         "username": user.username,
-        "success": success,
-        "error": error
+        "lxd_settings": lxd_settings,
+        "lxd_success": lxd_success,
+        "lxd_error": lxd_error,
+        "password_success": password_success,
+        "password_error": password_error
     })
 
 
@@ -230,29 +256,105 @@ async def change_password(
         return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
-            "error": "New password must be at least 6 characters"
+            "lxd_settings": db.query(LXDSettings).first(),
+            "password_error": "New password must be at least 6 characters"
         })
-    
+
     if new_password != confirm_password:
         return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
-            "error": "New passwords do not match"
+            "lxd_settings": db.query(LXDSettings).first(),
+            "password_error": "New passwords do not match"
         })
-    
+
     if not verify_password(current_password, user.password_hash):
         return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
-            "error": "Current password is incorrect"
+            "lxd_settings": db.query(LXDSettings).first(),
+            "password_error": "Current password is incorrect"
         })
-    
-    # Update password
+
     user.password_hash = get_password_hash(new_password)
     user.is_first_login = False
     db.commit()
+
+    return RedirectResponse(url="/settings?password_success=true", status_code=303)
+
+
+@app.post("/settings/lxd")
+async def save_lxd_settings(
+    request: Request,
+    server_url: str = Form(...),
+    client_cert: str = Form(""),
+    client_key: str = Form(""),
+    verify_ssl: str = Form("off"),
+    db: Session = Depends(get_db)
+):
+    """Save LXD connection settings"""
+    settings = db.query(LXDSettings).first()
     
-    return RedirectResponse(url="/admin/settings?success=true", status_code=303)
+    if settings:
+        settings.server_url = server_url
+        settings.client_cert = client_cert if client_cert else None
+        settings.client_key = client_key if client_key else None
+        settings.verify_ssl = verify_ssl == "on"
+    else:
+        settings = LXDSettings(
+            server_url=server_url,
+            client_cert=client_cert if client_cert else None,
+            client_key=client_key if client_key else None,
+            verify_ssl=verify_ssl == "on"
+        )
+        db.add(settings)
+    
+    db.commit()
+    
+    return RedirectResponse(url="/settings?lxd_success=Settings saved successfully", status_code=303)
+
+
+@app.post("/settings/lxd/test")
+async def test_lxd_connection(request: Request, db: Session = Depends(get_db)):
+    """Test LXD connection"""
+    settings = db.query(LXDSettings).first()
+    
+    if not settings:
+        return JSONResponse({"success": False, "message": "No LXD settings configured"})
+    
+    if not settings.client_cert or not settings.client_key:
+        return JSONResponse({"success": False, "message": "Certificate and Key are required. Please paste them in the settings form."})
+    
+    try:
+        from lxd_client import get_lxd_client
+        client = get_lxd_client(
+            settings.server_url,
+            verify_ssl=settings.verify_ssl,
+            cert=settings.client_cert,
+            key=settings.client_key
+        )
+        server = client.api.get()
+        return JSONResponse({
+            "success": True, 
+            "message": f"Connected to LXD server {server.get('environment', {}).get('server_name', 'unknown')}"
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@app.post("/settings/lxd/generate-cert")
+async def generate_certificate(request: Request):
+    """Generate client certificate for LXD authentication"""
+    try:
+        cert_pem, key_pem = generate_client_certificate("fastapi-client")
+        return JSONResponse({
+            "success": True,
+            "certificate": cert_pem,
+            "key": key_pem,
+            "message": "Certificate generated! Copy the certificate and add it to LXD trust store on your WSL."
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
 
 
 @app.get("/root-redirect", response_class=HTMLResponse)

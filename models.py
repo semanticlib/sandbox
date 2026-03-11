@@ -16,7 +16,8 @@ class LXDSettings(Base):
     __tablename__ = "lxd_settings"
 
     id = Column(Integer, primary_key=True, index=True)
-    server_url = Column(String, nullable=False)
+    use_socket = Column(Boolean, default=False)
+    server_url = Column(String, nullable=True)
     client_cert = Column(Text, nullable=True)
     client_key = Column(Text, nullable=True)
     verify_ssl = Column(Boolean, default=True)

@@ -192,18 +192,27 @@ async def dashboard(
     
     try:
         settings = db.query(LXDSettings).first()
-        if settings and settings.client_cert and settings.client_key:
+        if settings:
             from lxd_client import get_lxd_client
-            client = get_lxd_client(
-                settings.server_url,
-                verify_ssl=settings.verify_ssl,
-                cert=settings.client_cert,
-                key=settings.client_key
-            )
-            instances = client.instances.all()
-            total_instances = len(instances)
-            running_instances = sum(1 for i in instances if i.status == "Running")
-            lxd_connected = True
+            if settings.use_socket:
+                client = get_lxd_client(
+                    use_socket=True,
+                    verify_ssl=settings.verify_ssl,
+                    cert=settings.client_cert,
+                    key=settings.client_key
+                )
+            elif settings.server_url:
+                client = get_lxd_client(
+                    settings.server_url,
+                    verify_ssl=settings.verify_ssl,
+                    cert=settings.client_cert,
+                    key=settings.client_key
+                )
+            if client:
+                instances = client.instances.all()
+                total_instances = len(instances)
+                running_instances = sum(1 for i in instances if i.status == "Running")
+                lxd_connected = True
     except Exception:
         lxd_connected = False
     
@@ -286,7 +295,8 @@ async def change_password(
 @app.post("/settings/lxd")
 async def save_lxd_settings(
     request: Request,
-    server_url: str = Form(...),
+    server_url: str = Form(""),
+    use_socket: str = Form("off"),
     client_cert: str = Form(""),
     client_key: str = Form(""),
     verify_ssl: str = Form("off"),
@@ -296,13 +306,15 @@ async def save_lxd_settings(
     settings = db.query(LXDSettings).first()
     
     if settings:
-        settings.server_url = server_url
+        settings.server_url = server_url if server_url else None
+        settings.use_socket = use_socket == "on"
         settings.client_cert = client_cert if client_cert else None
         settings.client_key = client_key if client_key else None
         settings.verify_ssl = verify_ssl == "on"
     else:
         settings = LXDSettings(
-            server_url=server_url,
+            server_url=server_url if server_url else None,
+            use_socket=use_socket == "on",
             client_cert=client_cert if client_cert else None,
             client_key=client_key if client_key else None,
             verify_ssl=verify_ssl == "on"
@@ -322,21 +334,31 @@ async def test_lxd_connection(request: Request, db: Session = Depends(get_db)):
     if not settings:
         return JSONResponse({"success": False, "message": "No LXD settings configured"})
     
-    if not settings.client_cert or not settings.client_key:
-        return JSONResponse({"success": False, "message": "Certificate and Key are required. Please paste them in the settings form."})
+    # Socket connection doesn't require certificate
+    if not settings.use_socket and (not settings.client_cert or not settings.client_key):
+        return JSONResponse({"success": False, "message": "Certificate and Key are required for HTTPS connection. Please paste them in the settings form."})
     
     try:
         from lxd_client import get_lxd_client
-        client = get_lxd_client(
-            settings.server_url,
-            verify_ssl=settings.verify_ssl,
-            cert=settings.client_cert,
-            key=settings.client_key
-        )
-        server = client.api.get()
+        if settings.use_socket:
+            client = get_lxd_client(
+                use_socket=True,
+                verify_ssl=settings.verify_ssl,
+                cert=settings.client_cert,
+                key=settings.client_key
+            )
+        else:
+            client = get_lxd_client(
+                settings.server_url,
+                verify_ssl=settings.verify_ssl,
+                cert=settings.client_cert,
+                key=settings.client_key
+            )
+        server = client.api.get().json()
+        connection_type = "Unix socket" if settings.use_socket else "HTTPS"
         return JSONResponse({
             "success": True, 
-            "message": f"Connected to LXD server {server.get('environment', {}).get('server_name', 'unknown')}"
+            "message": f"Connected to LXD server via {connection_type}: {server.get('environment', {}).get('server_name', 'unknown')}"
         })
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)})

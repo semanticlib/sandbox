@@ -67,8 +67,8 @@
                     <div class="mb-3">
                         <label for="connection_type" class="form-label">Connection Type</label>
                         <select class="form-select" id="connection_type" name="connection_type" onchange="toggleConnectionFields()">
-                            <option value="https" {{ 'selected' if not lxd_settings or not lxd_settings.use_socket else '' }}>HTTPS (Remote)</option>
                             <option value="socket" {{ 'selected' if lxd_settings and lxd_settings.use_socket else '' }}>Unix Socket (Local)</option>
+                            <option value="https" {{ 'selected' if lxd_settings and lxd_settings.server_url and not lxd_settings.use_socket else '' }}>HTTPS (Remote)</option>
                         </select>
                     </div>
                     
@@ -82,22 +82,21 @@
                     
                     <div class="mb-3" id="socket-path-group" style="display: {{ 'block' if lxd_settings and lxd_settings.use_socket else 'none' }};">
                         <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> Will connect to local LXD via Unix socket at <code>/var/lib/lxd/unix.socket</code>
+                            <i class="bi bi-info-circle"></i> Will connect to local LXD via Unix socket
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="client_cert" class="form-label">
-                            Client Certificate
-                            <button type="button" class="btn btn-sm btn-outline-info float-end" onclick="generateCertificate()">
+                    <div class="mb-3" id="client-cert-group">
+                        <label for="client_cert" class="form-label d-flex justify-content-between align-items-center">
+                            <span>Client Certificate</span>
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="generateCertificate()">
                                 <i class="bi bi-shield-lock"></i> Generate
                             </button>
                         </label>
                         <textarea class="form-control" id="client_cert" name="client_cert" rows="4" 
                                   placeholder="-----BEGIN CERTIFICATE-----...">{{ lxd_settings.client_cert if lxd_settings else '' }}</textarea>
-                        <small class="text-muted">Required for HTTPS, optional for Unix socket</small>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="client-key-group">
                         <label for="client_key" class="form-label">Client Key</label>
                         <textarea class="form-control" id="client_key" name="client_key" rows="4" 
                                   placeholder="-----BEGIN PRIVATE KEY-----...">{{ lxd_settings.client_key if lxd_settings else '' }}</textarea>
@@ -125,31 +124,22 @@
                 <i class="bi bi-info-circle"></i> Setup Instructions (LXD)
             </div>
             <div class="card-body">
-                <h6 class="text-primary">HTTPS Connection:</h6>
+                <h6 class="text-primary">Unix Socket (Local LXD - Recommended):</h6>
                 <ol class="mb-3 text-muted" style="font-size: 14px;">
-                    <li>Click <strong>Generate</strong> to create client certificates</li>
-                    <li><strong>Copy the Certificate</strong> content (auto-filled in the form)</li>
-                    <li>In your <strong>LXD terminal</strong>, run:
-                        <code class="d-block mt-1 bg-light p-2 rounded">lxc config trust add</code>
-                    </li>
-                    <li>Enter a client name (e.g., <code>fastapi-client</code>)</li>
-                    <li>When prompted to paste certificate, <strong>paste the certificate</strong></li>
-                    <li>Enter Server URL: <code>https://&lt;lxd-ip&gt;:8443</code></li>
+                    <li>Select <strong>Unix Socket (Local)</strong> as Connection Type</li>
                     <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
                 </ol>
                 <hr>
-                <h6 class="text-primary">Unix Socket Connection:</h6>
+                <h6 class="text-primary">HTTPS (Remote LXD):</h6>
                 <ol class="mb-0 text-muted" style="font-size: 14px;">
-                    <li>Select <strong>Unix Socket</strong> as Connection Type</li>
-                    <li>Keep the default socket path or specify custom path</li>
-                    <li>Socket connection <strong>does not require certificates</strong></li>
-                    <li>Ensure the user running this app has access to the socket</li>
+                    <li>Select <strong>HTTPS (Remote)</strong> as Connection Type</li>
+                    <li>Click <strong>Generate</strong> to create client certificates</li>
+                    <li><strong>Copy the Certificate</strong> content (auto-filled in the form)</li>
+                    <li>In your <strong>LXD terminal</strong>, run: <code class="d-inline bg-light p-1 rounded">lxc config trust add</code></li>
+                    <li>Paste the certificate when prompted</li>
+                    <li>Enter Server URL: <code>https://&lt;lxd-ip&gt;:8443</code></li>
                     <li>Click <strong>Save Settings</strong> → <strong>Test Connection</strong></li>
                 </ol>
-                <hr class="my-3">
-                <p class="text-muted mb-0" style="font-size: 13px;">
-                    <strong>Find LXD IP:</strong> Run <code class="bg-light p-1 rounded">ip addr show eth0 | grep inet</code> in LXD
-                </p>
             </div>
         </div>
     </div>
@@ -168,6 +158,8 @@ function toggleConnectionFields() {
     const serverUrlInput = document.getElementById('server_url');
     const useSocketInput = document.getElementById('use_socket');
     const verifySslGroup = document.getElementById('verify-ssl-group');
+    const clientCertGroup = document.getElementById('client-cert-group');
+    const clientKeyGroup = document.getElementById('client-key-group');
     
     if (connectionType === 'socket') {
         serverUrlGroup.style.display = 'none';
@@ -175,12 +167,16 @@ function toggleConnectionFields() {
         serverUrlInput.required = false;
         useSocketInput.value = 'on';
         verifySslGroup.style.display = 'none';
+        clientCertGroup.style.display = 'none';
+        clientKeyGroup.style.display = 'none';
     } else {
         serverUrlGroup.style.display = 'block';
         socketPathGroup.style.display = 'none';
         serverUrlInput.required = true;
         useSocketInput.value = 'off';
         verifySslGroup.style.display = 'block';
+        clientCertGroup.style.display = 'block';
+        clientKeyGroup.style.display = 'block';
     }
 }
 
@@ -257,6 +253,7 @@ async function generateCertificate() {
 
 // Initialize connection fields on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Unix Socket is the default selection in the dropdown
     toggleConnectionFields();
 });
 </script>

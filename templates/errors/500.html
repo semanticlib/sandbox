@@ -1,10 +1,10 @@
 {% extends "base_auth.html" %}
 
-{% block title %}{{ status_code }} - Page Not Found{% endblock %}
+{% block title %}500 - Server Error{% endblock %}
 
 {% block header %}
-<h2><i class="bi bi-exclamation-triangle"></i> {{ status_code }}</h2>
-<p class="lead">Page Not Found</p>
+<h2><i class="bi bi-exclamation-triangle"></i> 500</h2>
+<p class="lead">Internal Server Error</p>
 {% endblock %}
 
 {% block form %}
@@ -13,7 +13,7 @@
         {% if message %}
         {{ message }}
         {% else %}
-        The page you're looking for doesn't exist.
+        Something went wrong. Please try again later.
         {% endif %}
     </p>
     <a href="/" class="btn btn-primary btn-auth">

@@ -17,13 +17,13 @@
                     Password changed successfully!
                 </div>
                 {% endif %}
-                
+
                 {% if error %}
                 <div class="alert alert-danger" role="alert">
                     {{ error }}
                 </div>
                 {% endif %}
-                
+
                 <form method="post" action="/settings/change-password">
                     <div class="mb-3">
                         <label for="current_password" class="form-label">Current Password</label>
@@ -44,7 +44,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">

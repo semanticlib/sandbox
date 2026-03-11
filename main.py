@@ -23,7 +23,7 @@ templates = Jinja2Templates(directory="templates")
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
     """Handle 404 errors"""
-    return templates.TemplateResponse("error.html", {
+    return templates.TemplateResponse("errors/404.html", {
         "request": request,
         "status_code": 404,
         "message": "The page you're looking for doesn't exist."
@@ -33,7 +33,7 @@ async def not_found_handler(request: Request, exc):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc):
     """Handle general exceptions"""
-    return templates.TemplateResponse("error.html", {
+    return templates.TemplateResponse("errors/500.html", {
         "request": request,
         "status_code": 500,
         "message": "Something went wrong. Please try again later."
@@ -79,7 +79,7 @@ async def setup_page(request: Request, error: str = None):
     db = next(get_db())
     if admin_exists(db):
         return RedirectResponse(url="/login")
-    return templates.TemplateResponse("setup.html", {
+    return templates.TemplateResponse("auth/setup.html", {
         "request": request,
         "error": error
     })
@@ -98,13 +98,13 @@ async def setup_admin(
         return RedirectResponse(url="/login")
     
     if password != confirm_password:
-        return templates.TemplateResponse("setup.html", {
+        return templates.TemplateResponse("auth/setup.html", {
             "request": request,
             "error": "Passwords do not match"
         })
     
     if len(password) < 6:
-        return templates.TemplateResponse("setup.html", {
+        return templates.TemplateResponse("auth/setup.html", {
             "request": request,
             "error": "Password must be at least 6 characters"
         })
@@ -112,7 +112,7 @@ async def setup_admin(
     # Check if username already exists
     existing = db.query(AdminUser).filter(AdminUser.username == username).first()
     if existing:
-        return templates.TemplateResponse("setup.html", {
+        return templates.TemplateResponse("auth/setup.html", {
             "request": request,
             "error": "Username already taken"
         })
@@ -141,7 +141,7 @@ async def login_page(request: Request, error: str = None):
     if not admin_exists(db):
         return RedirectResponse(url="/setup")
     
-    return templates.TemplateResponse("login.html", {
+    return templates.TemplateResponse("auth/login.html", {
         "request": request,
         "error": error
     })
@@ -158,13 +158,13 @@ async def login(
     user = db.query(AdminUser).filter(AdminUser.username == username).first()
     
     if not user or not verify_password(password, user.password_hash):
-        return templates.TemplateResponse("login.html", {
+        return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Invalid username or password"
         })
     
     if not user.is_active:
-        return templates.TemplateResponse("login.html", {
+        return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Account is disabled"
         })
@@ -192,7 +192,7 @@ async def dashboard(
     user: AdminUser = Depends(require_auth)
 ):
     """Admin dashboard page"""
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse("admin/dashboard.html", {
         "request": request,
         "username": user.username,
         "is_first_login": user.is_first_login,
@@ -208,7 +208,7 @@ async def settings_page(
     error: str = None
 ):
     """Settings page - change password"""
-    return templates.TemplateResponse("settings.html", {
+    return templates.TemplateResponse("admin/settings.html", {
         "request": request,
         "username": user.username,
         "success": success,
@@ -227,21 +227,21 @@ async def change_password(
 ):
     """Handle password change"""
     if len(new_password) < 6:
-        return templates.TemplateResponse("settings.html", {
+        return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
             "error": "New password must be at least 6 characters"
         })
     
     if new_password != confirm_password:
-        return templates.TemplateResponse("settings.html", {
+        return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
             "error": "New passwords do not match"
         })
     
     if not verify_password(current_password, user.password_hash):
-        return templates.TemplateResponse("settings.html", {
+        return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
             "error": "Current password is incorrect"

@@ -351,7 +351,7 @@ async def generate_certificate(request: Request):
             "success": True,
             "certificate": cert_pem,
             "key": key_pem,
-            "message": "Certificate generated! Copy the certificate and add it to LXD trust store on your WSL."
+            "message": "Certificate generated! Copy the certificate and add it to LXD trust store."
         })
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)})

@@ -177,13 +177,13 @@
                             <div class="mb-3">
                                 <label for="cloud_init" class="form-label d-flex justify-content-between align-items-center">
                                     <span>Cloud-init Configuration (YAML)</span>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadCloudInitTemplate()">
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadCloudInitTemplate()">
                                         <i class="bi bi-file-earmark-code"></i> Load Template
                                     </button>
                                 </label>
                                 <textarea class="form-control font-monospace" id="cloud_init" name="cloud_init" rows="10"
                                           placeholder="#cloud-config&#10;users:&#10;  - name: ubuntu&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else '' }}</textarea>
-                                <small class="text-muted">Optional cloud-init user-data configuration for VM customization</small>
+                                <small class="text-muted">Optional <a href="https://cloud-init.io" target="_blank">cloud-init</a> user-data configuration for VM customization</small>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Save VM Defaults

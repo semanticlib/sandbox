@@ -154,26 +154,25 @@
                         {% endif %}
 
                         <form method="post" action="/settings/vm">
-                            <div class="mb-3">
-                                <label for="default_cpu" class="form-label">Default CPU Cores</label>
-                                <input type="number" class="form-control" id="default_cpu" name="cpu"
-                                       value="{{ vm_settings.cpu if vm_settings else 2 }}"
-                                       min="1" max="32" required>
-                                <small class="text-muted">Number of CPU cores for new VMs</small>
-                            </div>
-                            <div class="mb-3">
-                                <label for="default_memory" class="form-label">Default Memory (GiB)</label>
-                                <input type="number" class="form-control" id="default_memory" name="memory"
-                                       value="{{ vm_settings.memory if vm_settings else 4 }}"
-                                       min="1" max="128" required>
-                                <small class="text-muted">Amount of RAM in GiB for new VMs</small>
-                            </div>
-                            <div class="mb-3">
-                                <label for="default_disk" class="form-label">Default Disk Size (GiB)</label>
-                                <input type="number" class="form-control" id="default_disk" name="disk"
-                                       value="{{ vm_settings.disk if vm_settings else 20 }}"
-                                       min="5" max="500" required>
-                                <small class="text-muted">Disk size in GiB for new VMs</small>
+                            <div class="mb-5 row">
+                                <div class="col">
+                                    <label for="default_cpu" class="form-label">Default CPU Cores</label>
+                                    <input type="number" class="form-control" id="default_cpu" name="cpu"
+                                           value="{{ vm_settings.cpu if vm_settings else 2 }}"
+                                           min="1" max="32" required>
+                                </div>
+                                <div class="col">
+                                    <label for="default_memory" class="form-label">Default Memory (GiB)</label>
+                                    <input type="number" class="form-control" id="default_memory" name="memory"
+                                           value="{{ vm_settings.memory if vm_settings else 4 }}"
+                                           min="1" max="128" required>
+                                </div>
+                                <div class="col">  
+                                    <label for="default_disk" class="form-label">Default Disk Size (GiB)</label>
+                                    <input type="number" class="form-control" id="default_disk" name="disk"
+                                           value="{{ vm_settings.disk if vm_settings else 20 }}"
+                                           min="5" max="500" required>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="cloud_init" class="form-label d-flex justify-content-between align-items-center">

@@ -31,3 +31,4 @@ class VMDefaultSettings(Base):
     cpu = Column(Integer, default=2)
     memory = Column(Integer, default=4)
     disk = Column(Integer, default=20)
+    cloud_init = Column(Text, nullable=True)

@@ -156,24 +156,35 @@
                         <form method="post" action="/settings/vm">
                             <div class="mb-3">
                                 <label for="default_cpu" class="form-label">Default CPU Cores</label>
-                                <input type="number" class="form-control" id="default_cpu" name="cpu" 
-                                       value="{{ vm_settings.cpu if vm_settings else 2 }}" 
+                                <input type="number" class="form-control" id="default_cpu" name="cpu"
+                                       value="{{ vm_settings.cpu if vm_settings else 2 }}"
                                        min="1" max="32" required>
                                 <small class="text-muted">Number of CPU cores for new VMs</small>
                             </div>
                             <div class="mb-3">
                                 <label for="default_memory" class="form-label">Default Memory (GiB)</label>
-                                <input type="number" class="form-control" id="default_memory" name="memory" 
-                                       value="{{ vm_settings.memory if vm_settings else 4 }}" 
+                                <input type="number" class="form-control" id="default_memory" name="memory"
+                                       value="{{ vm_settings.memory if vm_settings else 4 }}"
                                        min="1" max="128" required>
                                 <small class="text-muted">Amount of RAM in GiB for new VMs</small>
                             </div>
                             <div class="mb-3">
                                 <label for="default_disk" class="form-label">Default Disk Size (GiB)</label>
-                                <input type="number" class="form-control" id="default_disk" name="disk" 
-                                       value="{{ vm_settings.disk if vm_settings else 20 }}" 
+                                <input type="number" class="form-control" id="default_disk" name="disk"
+                                       value="{{ vm_settings.disk if vm_settings else 20 }}"
                                        min="5" max="500" required>
                                 <small class="text-muted">Disk size in GiB for new VMs</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cloud_init" class="form-label d-flex justify-content-between align-items-center">
+                                    <span>Cloud-init Configuration (YAML)</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadCloudInitTemplate()">
+                                        <i class="bi bi-file-earmark-code"></i> Load Template
+                                    </button>
+                                </label>
+                                <textarea class="form-control font-monospace" id="cloud_init" name="cloud_init" rows="10"
+                                          placeholder="#cloud-config&#10;users:&#10;  - name: ubuntu&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else '' }}</textarea>
+                                <small class="text-muted">Optional cloud-init user-data configuration for VM customization</small>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Save VM Defaults
@@ -344,13 +355,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Always show LXD Connection tab by default on fresh page load
     const lxdTab = new bootstrap.Tab(document.getElementById('lxd-tab'));
     lxdTab.show();
-    
+
     // Auto-switch to specific tab if there are related messages
     const passwordSuccess = "{{ password_success if password_success else '' }}";
     const passwordError = "{{ password_error if password_error else '' }}";
     const vmSuccess = "{{ vm_success if vm_success else '' }}";
     const vmError = "{{ vm_error if vm_error else '' }}";
-    
+
     if (vmSuccess || vmError) {
         const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
         vmTab.show();
@@ -359,5 +370,43 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordTab.show();
     }
 });
+
+function loadCloudInitTemplate() {
+    const cloudInitField = document.getElementById('cloud_init');
+    const template = `#cloud-config
+# Default user configuration
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa YOUR_PUBLIC_KEY_HERE
+
+# Update packages on first boot
+package_update: true
+package_upgrade: false
+
+# Install additional packages
+packages:
+  - vim
+  - curl
+  - wget
+
+# Set hostname
+hostname: my-vm
+
+# Write files to the system
+write_files:
+  - path: /etc/motd
+    content: |
+      Welcome to this VM!
+      Configured by cloud-init.
+
+# Run commands on first boot
+runcmd:
+  - echo "Cloud-init completed successfully" >> /var/log/cloud-init-custom.log
+`;
+    cloudInitField.value = template;
+}
 </script>
 {% endblock %}

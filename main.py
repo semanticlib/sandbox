@@ -37,7 +37,7 @@ class InstanceCreateRequest(BaseModel):
     type: str = "virtual-machine"
 
 
-def track_instance_creation(task_id: str, name: str, cpu: int, ram: int, disk: int, instance_type: str, lxd_settings: dict):
+def track_instance_creation(task_id: str, name: str, cpu: int, ram: int, disk: int, instance_type: str, lxd_settings: dict, cloud_init: str = None):
     """Background task to create an instance and track progress"""
     try:
         creation_tasks[task_id] = {
@@ -46,7 +46,7 @@ def track_instance_creation(task_id: str, name: str, cpu: int, ram: int, disk: i
             "done": False,
             "error": None
         }
-        
+
         from lxd_client import get_lxd_client
         if lxd_settings["use_socket"]:
             client = get_lxd_client(
@@ -62,10 +62,10 @@ def track_instance_creation(task_id: str, name: str, cpu: int, ram: int, disk: i
                 cert=lxd_settings["client_cert"],
                 key=lxd_settings["client_key"]
             )
-        
+
         creation_tasks[task_id]["progress"] = 15
         creation_tasks[task_id]["message"] = f"Checking if instance '{name}' already exists..."
-        
+
         # Check if instance already exists
         try:
             existing = client.instances.get(name)
@@ -73,15 +73,20 @@ def track_instance_creation(task_id: str, name: str, cpu: int, ram: int, disk: i
                 raise Exception(f"Instance '{name}' already exists")
         except Exception:
             pass  # Instance doesn't exist, which is what we want
-        
+
         creation_tasks[task_id]["progress"] = 25
         creation_tasks[task_id]["message"] = "Preparing instance configuration..."
-        
+
         # Build instance configuration
         config = {
             "limits.cpu": str(cpu),
             "limits.memory": f"{ram}GiB",
         }
+        
+        # Add cloud-init user-data if provided
+        if cloud_init and cloud_init.strip():
+            config["user.user-data"] = cloud_init
+        
         devices = {
             "root": {
                 "type": "disk",
@@ -466,12 +471,19 @@ async def dashboard(
                         if cpu == 'N/A' and inst.type == 'virtual-machine':
                             cpu = 'default'  # LXD default CPU allocation
 
+                        # Get disk size from instance devices
+                        disk = 'N/A'
+                        root_device = inst.devices.get('root', {})
+                        if root_device and 'size' in root_device:
+                            disk = root_device['size']
+
                         instances.append({
                             'name': inst.name,
                             'status': inst.status,
                             'type': inst.type,
                             'cpu': cpu,
                             'memory': memory,
+                            'disk': disk,
                         })
                     except Exception:
                         instances.append({
@@ -480,6 +492,7 @@ async def dashboard(
                             'type': inst.type,
                             'cpu': 'N/A',
                             'memory': 'N/A',
+                            'disk': 'N/A',
                         })
                 
                 # Filter by search
@@ -674,6 +687,7 @@ async def save_vm_settings(
     cpu: int = Form(...),
     memory: int = Form(...),
     disk: int = Form(...),
+    cloud_init: str = Form(""),
     db: Session = Depends(get_db)
 ):
     """Save default VM settings"""
@@ -683,11 +697,13 @@ async def save_vm_settings(
         settings.cpu = cpu
         settings.memory = memory
         settings.disk = disk
+        settings.cloud_init = cloud_init if cloud_init else None
     else:
         settings = VMDefaultSettings(
             cpu=cpu,
             memory=memory,
-            disk=disk
+            disk=disk,
+            cloud_init=cloud_init if cloud_init else None
         )
         db.add(settings)
 
@@ -711,19 +727,23 @@ async def create_instance(request: Request, db: Session = Depends(get_db)):
             })
 
         # Get LXD settings BEFORE starting background thread
-        settings = db.query(LXDSettings).first()
-        if not settings:
+        lxd_settings_db = db.query(LXDSettings).first()
+        if not lxd_settings_db:
             return JSONResponse({
                 "success": False,
                 "message": "LXD not configured. Please configure LXD in Settings first."
             })
 
+        # Get VM default settings for cloud-init
+        vm_settings = db.query(VMDefaultSettings).first()
+        cloud_init = vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else None
+
         lxd_settings = {
-            "use_socket": settings.use_socket,
-            "server_url": settings.server_url,
-            "verify_ssl": settings.verify_ssl,
-            "client_cert": settings.client_cert,
-            "client_key": settings.client_key
+            "use_socket": lxd_settings_db.use_socket,
+            "server_url": lxd_settings_db.server_url,
+            "verify_ssl": lxd_settings_db.verify_ssl,
+            "client_cert": lxd_settings_db.client_cert,
+            "client_key": lxd_settings_db.client_key
         }
 
         # Generate task ID
@@ -732,7 +752,7 @@ async def create_instance(request: Request, db: Session = Depends(get_db)):
         # Start background task
         thread = threading.Thread(
             target=track_instance_creation,
-            args=(task_id, req.name, req.cpu, req.ram, req.disk, req.type, lxd_settings)
+            args=(task_id, req.name, req.cpu, req.ram, req.disk, req.type, lxd_settings, cloud_init)
         )
         thread.daemon = True
         thread.start()

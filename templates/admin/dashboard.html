@@ -141,6 +141,7 @@
                         <th>Status</th>
                         <th>CPU</th>
                         <th>Memory</th>
+                        <th>Disk</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -179,6 +180,13 @@
                             {{ instance.memory|filesizeformat }}
                             {% else %}
                             <span class="badge bg-info">{{ instance.memory }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if instance.disk == 'N/A' %}
+                            <span class="text-muted">N/A</span>
+                            {% else %}
+                            <span class="badge bg-info">{{ instance.disk }}</span>
                             {% endif %}
                         </td>
                         <td>

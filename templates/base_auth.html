@@ -1,60 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<style>
-    body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .auth-card {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        padding: 40px;
-        width: 100%;
-        max-width: 450px;
-    }
-    .auth-header {
-        text-align: center;
-        margin-bottom: 30px;
-    }
-    .auth-header h2 {
-        color: #333;
-        font-weight: 600;
-    }
-    .auth-header p {
-        color: #666;
-        font-size: 14px;
-    }
-    .btn-auth {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        padding: 12px;
-        font-weight: 500;
-    }
-    .btn-auth:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
-    .form-control {
-        padding: 12px;
-        border-radius: 8px;
-    }
-    .form-label {
-        font-weight: 500;
-        color: #555;
-    }
-    .badge-first-launch {
-        background: #ffc107;
-        color: #000;
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-</style>
+<link rel="stylesheet" href="/static/css/auth.css">
 {% endblock %}
 
 {% block content %}

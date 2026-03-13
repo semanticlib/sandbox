@@ -5,6 +5,7 @@ import time
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from jinja2 import filters
 from pydantic import BaseModel
@@ -20,6 +21,9 @@ from auth import SECRET_KEY, ALGORITHM
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Admin Panel")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 # Add filesizeformat filter

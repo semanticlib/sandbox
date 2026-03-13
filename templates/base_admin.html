@@ -50,6 +50,120 @@
         background: white;
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
+
+    /* Dark Mode Styles */
+    body.dark-mode {
+        background-color: #1a1a2e;
+        color: #eaeaea;
+    }
+    body.dark-mode .navbar {
+        background: #16213e !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    body.dark-mode .card {
+        background: #16213e;
+        border: 1px solid #2a2a4e;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    body.dark-mode .card-header {
+        background: #1a1a2e !important;
+        border-bottom: 1px solid #2a2a4e;
+        color: #eaeaea;
+    }
+    body.dark-mode .card-body {
+        color: #eaeaea;
+    }
+    body.dark-mode .form-control,
+    body.dark-mode .form-select,
+    body.dark-mode .input-group-text {
+        background: #0f3460;
+        border-color: #2a2a4e;
+        color: #eaeaea;
+    }
+    body.dark-mode .form-control:focus,
+    body.dark-mode .form-select:focus {
+        background: #1a4a7a;
+        border-color: #667eea;
+        color: #eaeaea;
+    }
+    body.dark-mode .form-control::placeholder {
+        color: #888;
+    }
+    body.dark-mode .table {
+        color: #eaeaea;
+    }
+    body.dark-mode .table-hover tbody tr:hover {
+        background: #1a4a7a;
+    }
+    body.dark-mode .alert-info {
+        background: #0f3460;
+        color: #eaeaea;
+        border-color: #1a4a7a;
+    }
+    body.dark-mode .alert-success {
+        background: #0f3460;
+        color: #4ade80;
+        border-color: #1a4a7a;
+    }
+    body.dark-mode .alert-danger {
+        background: #0f3460;
+        color: #f87171;
+        border-color: #1a4a7a;
+    }
+    body.dark-mode .nav-tabs {
+        border-bottom: 1px solid #2a2a4e;
+    }
+    body.dark-mode .nav-tabs .nav-link {
+        color: #eaeaea;
+    }
+    body.dark-mode .nav-tabs .nav-link.active {
+        background: #16213e;
+        border-color: #2a2a4e #2a2a4e #16213e;
+        color: #667eea;
+    }
+    body.dark-mode .nav-tabs .nav-link:hover {
+        border-color: #2a2a4e;
+        color: #eaeaea;
+    }
+    body.dark-mode .text-muted {
+        color: #888 !important;
+    }
+    body.dark-mode .navbar-text {
+        color: #eaeaea;
+    }
+    body.dark-mode .btn-close {
+        filter: invert(1);
+    }
+    body.dark-mode .modal-content {
+        background: #16213e;
+        border: 1px solid #2a2a4e;
+    }
+    body.dark-mode .modal-header {
+        border-bottom: 1px solid #2a2a4e;
+    }
+    body.dark-mode .modal-footer {
+        border-top: 1px solid #2a2a4e;
+    }
+    body.dark-mode .progress {
+        background: #0f3460;
+    }
+
+    /* Dark mode toggle button */
+    .dark-mode-toggle {
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 8px;
+        transition: all 0.3s;
+        border: none;
+        background: transparent;
+        color: inherit;
+    }
+    .dark-mode-toggle:hover {
+        background: rgba(0,0,0,0.1);
+    }
+    body.dark-mode .dark-mode-toggle:hover {
+        background: rgba(255,255,255,0.1);
+    }
 </style>
 {% endblock %}
 
@@ -70,6 +184,9 @@
                         Welcome, <strong>{{ username }}</strong>
                         {% endblock %}
                     </span>
+                    <button class="dark-mode-toggle ms-auto" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                        <i class="bi bi-moon-fill" id="dark-mode-icon"></i>
+                    </button>
                 </div>
             </nav>
             
@@ -77,4 +194,30 @@
         </div>
     </div>
 </div>
+
+<script>
+// Dark mode toggle functionality
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    updateDarkModeIcon(isDark);
+}
+
+function updateDarkModeIcon(isDark) {
+    const icon = document.getElementById('dark-mode-icon');
+    if (icon) {
+        icon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+    }
+}
+
+// Apply saved dark mode preference on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode === 'true') {
+        document.body.classList.add('dark-mode');
+        updateDarkModeIcon(true);
+    }
+});
+</script>
 {% endblock %}

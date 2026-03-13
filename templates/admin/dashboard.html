@@ -9,15 +9,17 @@
     <!-- Instances Card -->
     <div class="col-md-3 mb-4">
         <div class="card stat-card stat-card-instances">
-            <div class="card-body">
+            <div class="card-body d-flex align-items-center justify-content-between">
                 <div class="stat-card-icon">
                     <i class="bi bi-box"></i>
                 </div>
-                <div class="stat-card-value">{{ running_instances }} / {{ total_instances }}</div>
-                <div class="stat-card-label">Running / Total Instances</div>
-                <div class="stat-progress" style="visibility: hidden;">
-                    <div class="stat-progress-bar" style="width: 0%;"></div>
+                <div class="text-end">
+                    <div class="stat-card-value">{{ running_instances }} / {{ total_instances }}</div>
+                    <div class="stat-card-label">Running / Total Instances</div>
                 </div>
+            </div>
+            <div class="stat-progress" style="visibility: hidden;">
+                <div class="stat-progress-bar" style="width: 0%;"></div>
             </div>
         </div>
     </div>
@@ -25,16 +27,18 @@
     <!-- CPU Usage Card -->
     <div class="col-md-3 mb-4">
         <div class="card stat-card stat-card-cpu">
-            <div class="card-body">
+            <div class="card-body d-flex align-items-center justify-content-between">
                 <div class="stat-card-icon">
                     <i class="bi bi-cpu"></i>
                 </div>
-                <div class="stat-card-value">{{ "%.1f"|format(cpu_percent) }}%</div>
-                <div class="stat-card-label">CPU Usage</div>
-                <div class="stat-progress">
-                    <div class="stat-progress-bar {% if cpu_percent > 80 %}bg-danger{% elif cpu_percent > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                         style="width: {{ cpu_percent }}%;"></div>
+                <div class="text-end">
+                    <div class="stat-card-value">{{ "%.1f"|format(cpu_percent) }}%</div>
+                    <div class="stat-card-label">CPU Usage</div>
                 </div>
+            </div>
+            <div class="stat-progress">
+                <div class="stat-progress-bar {% if cpu_percent > 80 %}bg-danger{% elif cpu_percent > 60 %}bg-warning{% else %}bg-success{% endif %}"
+                     style="width: {{ cpu_percent }}%;"></div>
             </div>
         </div>
     </div>
@@ -42,16 +46,18 @@
     <!-- Memory Usage Card -->
     <div class="col-md-3 mb-4">
         <div class="card stat-card stat-card-memory">
-            <div class="card-body">
+            <div class="card-body d-flex align-items-center justify-content-between">
                 <div class="stat-card-icon">
                     <i class="bi bi-memory"></i>
                 </div>
-                <div class="stat-card-value">{{ (memory_used / 1073741824)|round(1) }} <span class="stat-card-sub">/ {{ (memory_total / 1073741824)|round(1) }} GiB</span></div>
-                <div class="stat-card-label">Memory Usage ({{ "%.1f"|format(memory_percent) }}%)</div>
-                <div class="stat-progress">
-                    <div class="stat-progress-bar {% if memory_percent > 80 %}bg-danger{% elif memory_percent > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                         style="width: {{ memory_percent }}%;"></div>
+                <div class="text-end">
+                    <div class="stat-card-value">{{ (memory_used / 1073741824)|round(1) }} <span class="stat-card-sub">/ {{ (memory_total / 1073741824)|round(1) }} GiB</span></div>
+                    <div class="stat-card-label">Memory Usage ({{ "%.1f"|format(memory_percent) }}%)</div>
                 </div>
+            </div>
+            <div class="stat-progress">
+                <div class="stat-progress-bar {% if memory_percent > 80 %}bg-danger{% elif memory_percent > 60 %}bg-warning{% else %}bg-success{% endif %}"
+                     style="width: {{ memory_percent }}%;"></div>
             </div>
         </div>
     </div>
@@ -59,16 +65,18 @@
     <!-- Disk Usage Card -->
     <div class="col-md-3 mb-4">
         <div class="card stat-card stat-card-disk">
-            <div class="card-body">
+            <div class="card-body d-flex align-items-center justify-content-between">
                 <div class="stat-card-icon">
                     <i class="bi bi-hdd"></i>
                 </div>
-                <div class="stat-card-value">{{ (disk_used / 1073741824)|round(1) }} <span class="stat-card-sub">/ {{ (disk_total / 1073741824)|round(1) }} GiB</span></div>
-                <div class="stat-card-label">Disk Usage ({{ "%.1f"|format(disk_percent) }}%)</div>
-                <div class="stat-progress">
-                    <div class="stat-progress-bar {% if disk_percent > 80 %}bg-danger{% elif disk_percent > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                         style="width: {{ disk_percent }}%;"></div>
+                <div class="text-end">
+                    <div class="stat-card-value">{{ (disk_used / 1073741824)|round(1) }} <span class="stat-card-sub">/ {{ (disk_total / 1073741824)|round(1) }} GiB</span></div>
+                    <div class="stat-card-label">Disk Usage ({{ "%.1f"|format(disk_percent) }}%)</div>
                 </div>
+            </div>
+            <div class="stat-progress">
+                <div class="stat-progress-bar {% if disk_percent > 80 %}bg-danger{% elif disk_percent > 60 %}bg-warning{% else %}bg-success{% endif %}"
+                     style="width: {{ disk_percent }}%;"></div>
             </div>
         </div>
     </div>

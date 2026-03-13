@@ -6,59 +6,110 @@
 
 {% block page_content %}
 <div class="row">
-    <div class="col-md-4 mb-4">
+    <!-- Instances Card -->
+    <div class="col-md-3 mb-4">
         <div class="card border-primary">
             <div class="card-header bg-primary text-white">
-                <i class="bi bi-box"></i> Total Instances
+                <i class="bi bi-box"></i> Instances
             </div>
             <div class="card-body text-center">
-                <h1 class="display-4 fw-bold">{{ total_instances }}</h1>
-                <p class="text-muted">LXD containers/VMs</p>
+                <h1 class="display-4 fw-bold">{{ running_instances }} / {{ total_instances }}</h1>
+                <p class="text-muted">Running / Total</p>
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-4">
+    
+    <!-- CPU Usage Card -->
+    <div class="col-md-3 mb-4">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-cpu"></i> CPU Usage
+            </div>
+            <div class="card-body text-center">
+                <h1 class="display-4 fw-bold">{{ "%.1f"|format(cpu_percent) }}%</h1>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar {% if cpu_percent > 80 %}bg-danger{% elif cpu_percent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ cpu_percent }}%;" 
+                         aria-valuenow="{{ cpu_percent }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Memory Usage Card -->
+    <div class="col-md-3 mb-4">
         <div class="card border-success">
             <div class="card-header bg-success text-white">
-                <i class="bi bi-play-circle"></i> Running Instances
+                <i class="bi bi-memory"></i> Memory
             </div>
             <div class="card-body text-center">
-                <h1 class="display-4 fw-bold">{{ running_instances }}</h1>
-                <p class="text-muted">Currently active</p>
+                <h1 class="display-6 fw-bold">{{ (memory_used / 1073741824)|round(1) }} / {{ (memory_total / 1073741824)|round(1) }} GiB</h1>
+                <p class="text-muted">{{ "%.1f"|format(memory_percent) }}% used</p>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar {% if memory_percent > 80 %}bg-danger{% elif memory_percent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ memory_percent }}%;" 
+                         aria-valuenow="{{ memory_percent }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100"></div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-4">
-        <div class="card {{ 'border-success' if lxd_connected else 'border-danger' }}">
-            <div class="card-header {{ 'bg-success' if lxd_connected else 'bg-danger' }} text-white">
-                <i class="bi bi-hdd-network"></i> LXD Connection
+
+    <!-- Disk Usage Card -->
+    <div class="col-md-3 mb-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-hdd"></i> Disk Usage
             </div>
             <div class="card-body text-center">
-                {% if lxd_connected %}
-                <h1 class="display-4"><i class="bi bi-check-circle text-success"></i></h1>
-                <p class="text-muted">Connected</p>
-                {% else %}
-                <h1 class="display-4"><i class="bi bi-x-circle text-danger"></i></h1>
-                <p class="text-muted">Not configured</p>
-                {% endif %}
+                <h1 class="display-6 fw-bold">{{ (disk_used / 1073741824)|round(1) }} / {{ (disk_total / 1073741824)|round(1) }} GiB</h1>
+                <p class="text-muted">{{ "%.1f"|format(disk_percent) }}% used</p>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar {% if disk_percent > 80 %}bg-danger{% elif disk_percent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ disk_percent }}%;" 
+                         aria-valuenow="{{ disk_percent }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 {% if not lxd_connected %}
-<div class="card mt-4">
-    <div class="card-header">
-        <i class="bi bi-info-circle"></i> Quick Actions
-    </div>
-    <div class="card-body">
-        <p class="mb-3 text-muted">
-            Configure your LXD server connection in 
-            <a href="/settings"><i class="bi bi-gear"></i> Settings</a> to view instance statistics.
-        </p>
-        <div class="alert alert-info mb-0">
-            <i class="bi bi-lightbulb"></i> 
-            <strong>Tip:</strong> For local LXD, use <strong>Unix Socket</strong> connection (no certificates needed) or <code>https://127.0.0.1:8443</code> with client certificates.
+<!-- Quick Info Card -->
+<div class="col-md-12 mb-4">
+    <div class="card border-secondary">
+        <div class="card-header bg-secondary text-white">
+            <i class="bi bi-info-circle"></i> System Info
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-2">
+                        <strong><i class="bi bi-clock"></i> Current Time:</strong> 
+                        <span class="text-muted">{{ current_time }}</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="bi bi-person-circle"></i> Logged in as:</strong> 
+                        <span class="text-muted">{{ username }}</span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2 text-danger">
+                        <i class="bi bi-x-circle-fill"></i> LXD Not Connected
+                    </p>
+                    <p class="mb-0 text-muted small">
+                        Configure LXD in <a href="/settings">Settings</a> to manage instances
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </div>

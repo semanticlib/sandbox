@@ -3,3 +3,4 @@ pylxd
 sqlalchemy
 python-jose[cryptography]
 bcrypt
+psutil

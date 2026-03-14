@@ -94,15 +94,18 @@ async def change_password(
 ):
     """Handle password change"""
     from core.models import ConnectionTemplate
-    
-    if len(new_password) < 6:
+    from core.security import validate_password_strength
+
+    # Validate new password strength
+    is_valid, error = validate_password_strength(new_password)
+    if not is_valid:
         return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
             "vm_settings": db.query(VMDefaultSettings).first(),
             "connection_templates": db.query(ConnectionTemplate).first(),
-            "password_error": "New password must be at least 6 characters"
+            "password_error": error
         })
 
     if new_password != confirm_password:
@@ -184,10 +187,12 @@ async def generate_certificate(request: Request):
             "success": True,
             "certificate": cert_pem,
             "key": key_pem,
-            "message": "Certificate generated! Copy the certificate and add it to LXD trust store."
+            "message": "Certificate generated successfully"
         })
-    except Exception as e:
-        return JSONResponse({"success": False, "message": str(e)})
+    except Exception:
+        import logging
+        logging.exception("Error generating certificate")
+        return JSONResponse({"success": False, "message": "Failed to generate certificate"})
 
 
 @router.post("/settings/vm")
@@ -313,10 +318,12 @@ async def get_available_images(db: Session = Depends(get_db)):
             "success": True,
             "images": images
         })
-    except Exception as e:
+    except Exception:
+        import logging
+        logging.exception("Error fetching images")
         return JSONResponse({
             "success": False,
-            "message": str(e)
+            "message": "Failed to fetch images"
         })
 
 

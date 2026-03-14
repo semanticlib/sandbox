@@ -57,6 +57,15 @@ async def setup_admin(
     db: Session = Depends(get_db)
 ):
     """Handle setup form - create first admin"""
+    # Rate limit setup attempts (prevent brute-force on first admin account)
+    client_ip = get_client_ip(request)
+    if login_rate_limiter.is_rate_limited(client_ip):
+        retry_after = login_rate_limiter.get_retry_after(client_ip)
+        return templates.TemplateResponse("auth/setup.html", {
+            "request": request,
+            "error": f"Too many attempts. Please try again in {retry_after} seconds."
+        })
+    
     if admin_exists(db):
         return RedirectResponse(url="/login")
 
@@ -66,10 +75,13 @@ async def setup_admin(
             "error": "Passwords do not match"
         })
 
-    if len(password) < 6:
+    # Validate password strength
+    from core.security import validate_password_strength
+    is_valid, error = validate_password_strength(password)
+    if not is_valid:
         return templates.TemplateResponse("auth/setup.html", {
             "request": request,
-            "error": "Password must be at least 6 characters"
+            "error": error
         })
 
     existing = db.query(AdminUser).filter(AdminUser.username == username).first()
@@ -95,7 +107,8 @@ async def setup_admin(
         value=access_token,
         httponly=True,
         max_age=3600,  # 1 hour (matches ACCESS_TOKEN_EXPIRE_MINUTES)
-        samesite="lax"
+        samesite="lax",
+        secure=True  # Only send over HTTPS
     )
     return response
 
@@ -165,7 +178,8 @@ async def login(
         value=access_token,
         httponly=True,
         max_age=3600,  # 1 hour (matches ACCESS_TOKEN_EXPIRE_MINUTES)
-        samesite="lax"
+        samesite="lax",
+        secure=True  # Only send over HTTPS
     )
     return response
 

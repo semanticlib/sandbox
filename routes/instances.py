@@ -130,9 +130,11 @@ async def create_instance(
             "task_id": task_id,
             "message": f"Creating {instance_type} '{name}'..."
         })
-    except Exception as e:
-        print(f"[ERROR] create_instance: {e}")
-        return JSONResponse({"success": False, "message": str(e)})
+    except Exception:
+        # Log full error internally, return generic message
+        import logging
+        logging.exception("Error creating instance")
+        return JSONResponse({"success": False, "message": "Failed to create instance"})
 
 
 @router.get("/create/status/{task_id}")
@@ -284,8 +286,10 @@ async def bulk_create_instances(
             "message": f"Starting bulk creation of {len(instance_names)} instances..."
         })
 
-    except Exception as e:
-        return JSONResponse({"success": False, "message": str(e)})
+    except Exception:
+        import logging
+        logging.exception("Error in bulk create")
+        return JSONResponse({"success": False, "message": "Failed to start bulk creation"})
 
 
 @router.post("/bulk/stop")
@@ -333,8 +337,10 @@ async def bulk_stop_instances(
             "message": f"Stopping {len(instance_names)} instances..."
         })
 
-    except Exception as e:
-        return JSONResponse({"success": False, "message": str(e)})
+    except Exception:
+        import logging
+        logging.exception("Error in bulk stop")
+        return JSONResponse({"success": False, "message": "Failed to stop instances"})
 
 
 @router.post("/bulk/start")
@@ -382,8 +388,10 @@ async def bulk_start_instances(
             "message": f"Starting {len(instance_names)} instances..."
         })
 
-    except Exception as e:
-        return JSONResponse({"success": False, "message": str(e)})
+    except Exception:
+        import logging
+        logging.exception("Error in bulk start")
+        return JSONResponse({"success": False, "message": "Failed to start instances"})
 
 
 @router.post("/bulk/delete")
@@ -431,8 +439,10 @@ async def bulk_delete_instances(
             "message": f"Deleting {len(instance_names)} instances..."
         })
 
-    except Exception as e:
-        return JSONResponse({"success": False, "message": str(e)})
+    except Exception:
+        import logging
+        logging.exception("Error in bulk delete")
+        return JSONResponse({"success": False, "message": "Failed to delete instances"})
 
 
 @router.get("/bulk/status/{operation_id}")

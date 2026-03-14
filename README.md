@@ -110,5 +110,7 @@ source .venv/bin/activate
 
 - Always set a strong `SECRET_KEY` in production
 - Use Caddy reverse proxy for automatic HTTPS (ports 80/443 must be open)
+- **Important:** Auth cookies require HTTPS (`secure=True` flag). The app will work over HTTP for local testing, but login sessions won't persist without HTTPS.
 - Rate limiting protects against brute-force login attempts
 - Input validation prevents path traversal and injection attacks
+- Password requirements: 8+ chars, uppercase, lowercase, number, special char

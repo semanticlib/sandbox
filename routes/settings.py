@@ -1,0 +1,208 @@
+"""Settings routes: LXD, VM defaults, password change"""
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, status
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
+from database import get_db
+from models import AdminUser, LXDSettings, VMDefaultSettings
+from auth import get_password_hash, verify_password
+from services.lxd_service import LXDService
+
+templates = Jinja2Templates(directory="templates")
+
+router = APIRouter(tags=["settings"])
+
+
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    """Get current logged-in user from session cookie"""
+    from jose import JWTError, jwt
+    from auth import SECRET_KEY, ALGORITHM
+    
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        user = db.query(AdminUser).filter(AdminUser.username == username).first()
+        return user
+    except JWTError:
+        return None
+
+
+def require_auth(request: Request, db: Session = Depends(get_db)):
+    """Dependency to require authentication"""
+    user = get_current_user(request, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+            headers={"Location": "/login"}
+        )
+    return user
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    user: AdminUser = Depends(require_auth),
+    db: Session = Depends(get_db),
+    lxd_success: str = None,
+    lxd_error: str = None,
+    password_success: str = None,
+    password_error: str = None,
+    vm_success: str = None,
+    vm_error: str = None
+):
+    """Settings page - change password, LXD configuration, and VM defaults"""
+    lxd_settings = db.query(LXDSettings).first()
+    vm_settings = db.query(VMDefaultSettings).first()
+
+    return templates.TemplateResponse("admin/settings.html", {
+        "request": request,
+        "username": user.username,
+        "lxd_settings": lxd_settings,
+        "vm_settings": vm_settings,
+        "lxd_success": lxd_success,
+        "lxd_error": lxd_error,
+        "password_success": password_success,
+        "password_error": password_error,
+        "vm_success": vm_success,
+        "vm_error": vm_error
+    })
+
+
+@router.post("/settings/change-password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
+    """Handle password change"""
+    if len(new_password) < 6:
+        return templates.TemplateResponse("admin/settings.html", {
+            "request": request,
+            "username": user.username,
+            "lxd_settings": db.query(LXDSettings).first(),
+            "vm_settings": db.query(VMDefaultSettings).first(),
+            "password_error": "New password must be at least 6 characters"
+        })
+
+    if new_password != confirm_password:
+        return templates.TemplateResponse("admin/settings.html", {
+            "request": request,
+            "username": user.username,
+            "lxd_settings": db.query(LXDSettings).first(),
+            "vm_settings": db.query(VMDefaultSettings).first(),
+            "password_error": "New passwords do not match"
+        })
+
+    if not verify_password(current_password, user.password_hash):
+        return templates.TemplateResponse("admin/settings.html", {
+            "request": request,
+            "username": user.username,
+            "lxd_settings": db.query(LXDSettings).first(),
+            "vm_settings": db.query(VMDefaultSettings).first(),
+            "password_error": "Current password is incorrect"
+        })
+
+    user.password_hash = get_password_hash(new_password)
+    user.is_first_login = False
+    db.commit()
+
+    return RedirectResponse(url="/settings?password_success=true", status_code=303)
+
+
+@router.post("/settings/lxd")
+async def save_lxd_settings(
+    request: Request,
+    server_url: str = Form(""),
+    use_socket: str = Form("off"),
+    client_cert: str = Form(""),
+    client_key: str = Form(""),
+    verify_ssl: str = Form("off"),
+    db: Session = Depends(get_db)
+):
+    """Save LXD connection settings"""
+    settings = db.query(LXDSettings).first()
+
+    if settings:
+        settings.server_url = server_url if server_url else None
+        settings.use_socket = use_socket == "on"
+        settings.client_cert = client_cert if client_cert else None
+        settings.client_key = client_key if client_key else None
+        settings.verify_ssl = verify_ssl == "on"
+    else:
+        settings = LXDSettings(
+            server_url=server_url if server_url else None,
+            use_socket=use_socket == "on",
+            client_cert=client_cert if client_cert else None,
+            client_key=client_key if client_key else None,
+            verify_ssl=verify_ssl == "on"
+        )
+        db.add(settings)
+
+    db.commit()
+
+    return RedirectResponse(url="/settings?lxd_success=Settings saved successfully", status_code=303)
+
+
+@router.post("/settings/lxd/test")
+async def test_lxd_connection(request: Request, db: Session = Depends(get_db)):
+    """Test LXD connection"""
+    lxd_service = LXDService(db)
+    result = lxd_service.test_connection()
+    return JSONResponse(result)
+
+
+@router.post("/settings/lxd/generate-cert")
+async def generate_certificate(request: Request):
+    """Generate client certificate for LXD authentication"""
+    try:
+        from cert_utils import generate_client_certificate
+        cert_pem, key_pem = generate_client_certificate("fastapi-client")
+        return JSONResponse({
+            "success": True,
+            "certificate": cert_pem,
+            "key": key_pem,
+            "message": "Certificate generated! Copy the certificate and add it to LXD trust store."
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@router.post("/settings/vm")
+async def save_vm_settings(
+    request: Request,
+    cpu: int = Form(...),
+    memory: int = Form(...),
+    disk: int = Form(...),
+    cloud_init: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """Save default VM settings"""
+    settings = db.query(VMDefaultSettings).first()
+
+    if settings:
+        settings.cpu = cpu
+        settings.memory = memory
+        settings.disk = disk
+        settings.cloud_init = cloud_init if cloud_init else None
+    else:
+        settings = VMDefaultSettings(
+            cpu=cpu,
+            memory=memory,
+            disk=disk,
+            cloud_init=cloud_init if cloud_init else None
+        )
+        db.add(settings)
+
+    db.commit()
+
+    return RedirectResponse(url="/settings?vm_success=VM defaults saved successfully", status_code=303)

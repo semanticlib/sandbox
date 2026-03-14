@@ -291,9 +291,282 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
                 zip_file.write(filepath, filename)
     
     zip_buffer.seek(0)
-    
+
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={instance_name}-ssh-config.zip"}
     )
+
+
+# ============== Bulk Operations ==============
+
+@router.get("/bulk/preflight")
+async def bulk_preflight_check(
+    names: str = "",
+    cpu: int = 2,
+    ram: int = 4,
+    disk: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Run pre-flight checks before bulk operations"""
+    from services.bulk_service import BulkOperationService
+    
+    # Parse names if provided
+    instance_names = []
+    if names:
+        instance_names = [n.strip() for n in names.split(",") if n.strip()]
+    
+    checks = BulkOperationService.check_preflight(
+        db, 
+        instance_names=instance_names if instance_names else None,
+        cpu_per_vm=cpu,
+        ram_per_vm=ram,
+        disk_per_vm=disk
+    )
+    return JSONResponse(checks)
+
+
+@router.post("/bulk/create")
+async def bulk_create_instances(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Create multiple instances at once.
+    
+    Expects JSON with:
+    - names: List of instance names (or comma-separated string)
+    - cpu, ram, disk: Resource allocation per instance
+    - type: "virtual-machine" or "container"
+    """
+    from services.bulk_service import BulkOperationService
+    
+    try:
+        data = await request.json()
+        
+        # Parse names (support list or comma-separated string)
+        names_input = data.get("names", [])
+        if isinstance(names_input, str):
+            instance_names = [n.strip() for n in names_input.split(",") if n.strip()]
+        else:
+            instance_names = names_input
+        
+        # Validate all names
+        for name in instance_names:
+            is_valid, error = validate_instance_name(name)
+            if not is_valid:
+                return JSONResponse({
+                    "success": False,
+                    "message": f"Invalid instance name '{name}': {error}"
+                })
+        
+        # Check for duplicates
+        if len(instance_names) != len(set(instance_names)):
+            return JSONResponse({
+                "success": False,
+                "message": "Duplicate instance names detected"
+            })
+        
+        # Validate resources
+        cpu = data.get("cpu", 2)
+        ram = data.get("ram", 4)
+        disk = data.get("disk", 20)
+        instance_type = data.get("type", "virtual-machine")
+        
+        is_valid, error = validate_positive_integer(cpu, "CPU", min_val=1, max_val=128)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": error})
+        
+        is_valid, error = validate_positive_integer(ram, "RAM (GB)", min_val=1, max_val=512)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": error})
+        
+        is_valid, error = validate_positive_integer(disk, "Disk (GB)", min_val=5, max_val=2048)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": error})
+        
+        # Get LXD settings
+        lxd_settings_db = db.query(LXDSettings).first()
+        if not lxd_settings_db:
+            return JSONResponse({
+                "success": False,
+                "message": "LXD not configured. Please configure LXD in Settings first."
+            })
+        
+        # Get VM default settings
+        vm_settings = db.query(VMDefaultSettings).first()
+        cloud_init = vm_settings.cloud_init if vm_settings else None
+        vm_swap = vm_settings.swap if vm_settings else 2
+        vm_username = vm_settings.username if vm_settings else "ubuntu"
+        image_fingerprint = vm_settings.image_fingerprint if vm_settings else None
+        
+        lxd_settings = {
+            "use_socket": lxd_settings_db.use_socket,
+            "server_url": lxd_settings_db.server_url,
+            "verify_ssl": lxd_settings_db.verify_ssl,
+            "client_cert": lxd_settings_db.client_cert,
+            "client_key": lxd_settings_db.client_key
+        }
+        
+        # Start bulk creation
+        op_id = BulkOperationService.start_bulk_create(
+            instance_names=instance_names,
+            cpu=cpu,
+            ram=ram,
+            disk=disk,
+            instance_type=instance_type,
+            lxd_settings=lxd_settings,
+            cloud_init=cloud_init,
+            vm_swap=vm_swap,
+            vm_username=vm_username,
+            image_fingerprint=image_fingerprint
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "operation_id": op_id,
+            "message": f"Starting bulk creation of {len(instance_names)} instances..."
+        })
+        
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@router.post("/bulk/stop")
+async def bulk_stop_instances(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Stop multiple instances at once.
+    
+    Expects JSON with:
+    - names: List of instance names to stop
+    - all: If true, stop all running instances (ignores names)
+    """
+    from services.bulk_service import BulkOperationService
+    
+    try:
+        data = await request.json()
+        stop_all = data.get("all", False)
+        instance_names = data.get("names", [])
+        
+        lxd_service = LXDService(db)
+        lxd_service.get_client()
+        
+        if not lxd_service.is_connected():
+            return JSONResponse({
+                "success": False,
+                "message": "LXD not configured"
+            })
+        
+        # Get all instances if "all" is specified
+        if stop_all:
+            all_instances = lxd_service.get_all_instances()
+            instance_names = [
+                inst["name"] for inst in all_instances 
+                if inst.get("status") == "Running"
+            ]
+        
+        if not instance_names:
+            return JSONResponse({
+                "success": False,
+                "message": "No instances to stop"
+            })
+        
+        op_id = BulkOperationService.start_bulk_stop(instance_names, db)
+        
+        return JSONResponse({
+            "success": True,
+            "operation_id": op_id,
+            "message": f"Stopping {len(instance_names)} instances..."
+        })
+        
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@router.post("/bulk/delete")
+async def bulk_delete_instances(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete multiple instances at once.
+    
+    Expects JSON with:
+    - names: List of instance names to delete
+    - all: If true, delete all stopped instances (ignores names)
+    """
+    from services.bulk_service import BulkOperationService
+    
+    try:
+        data = await request.json()
+        delete_all = data.get("all", False)
+        instance_names = data.get("names", [])
+        
+        lxd_service = LXDService(db)
+        lxd_service.get_client()
+        
+        if not lxd_service.is_connected():
+            return JSONResponse({
+                "success": False,
+                "message": "LXD not configured"
+            })
+        
+        # Get all stopped instances if "all" is specified
+        if delete_all:
+            all_instances = lxd_service.get_all_instances()
+            instance_names = [
+                inst["name"] for inst in all_instances 
+                if inst.get("status") != "Running"
+            ]
+        
+        if not instance_names:
+            return JSONResponse({
+                "success": False,
+                "message": "No instances to delete"
+            })
+        
+        op_id = BulkOperationService.start_bulk_delete(instance_names, db)
+        
+        return JSONResponse({
+            "success": True,
+            "operation_id": op_id,
+            "message": f"Deleting {len(instance_names)} instances..."
+        })
+        
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)})
+
+
+@router.get("/bulk/status/{operation_id}")
+async def get_bulk_operation_status(operation_id: str):
+    """Get the status of a bulk operation"""
+    from services.bulk_service import BulkOperationService
+    
+    operation = BulkOperationService.get_operation(operation_id)
+    
+    if not operation:
+        return JSONResponse({
+            "success": False,
+            "message": "Operation not found"
+        })
+    
+    return JSONResponse({
+        "success": True,
+        "operation": operation
+    })
+
+
+@router.get("/bulk/operations")
+async def list_bulk_operations():
+    """List all recent bulk operations"""
+    from services.bulk_service import BulkOperationService
+    
+    operations = BulkOperationService.get_all_operations()
+    return JSONResponse({
+        "success": True,
+        "operations": list(operations.values())
+    })

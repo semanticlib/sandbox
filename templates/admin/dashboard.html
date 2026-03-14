@@ -116,6 +116,34 @@
 {% endif %}
 
 {% if lxd_connected %}
+<!-- Bulk Operations Toolbar -->
+<div class="card mt-4">
+    <div class="card-body py-3">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
+                    <i class="bi bi-plus-circle"></i> Bulk Create
+                </button>
+                <button type="button" class="btn btn-warning me-2" onclick="bulkStopSelected()">
+                    <i class="bi bi-stop-circle"></i> Stop Selected
+                </button>
+                <button type="button" class="btn btn-danger me-2" onclick="bulkDeleteSelected()">
+                    <i class="bi bi-trash"></i> Delete Selected
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="bulkStopAll()">
+                    <i class="bi bi-stop-fill"></i> Stop All Running
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="bulkDeleteAll()">
+                    <i class="bi bi-trash-fill"></i> Delete All Stopped
+                </button>
+            </div>
+            <div class="col-md-4 text-end">
+                <span id="selected-count" class="badge bg-secondary">0 selected</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Create Instance Form -->
 <div class="card mt-4">
     <div class="card-header">
@@ -129,20 +157,20 @@
             </div>
             <div class="col-md-2">
                 <label for="instance_cpu" class="form-label">CPU (cores)</label>
-                <input type="number" class="form-control" id="instance_cpu" name="cpu" 
-                       value="{{ vm_defaults.cpu if vm_defaults else 2 }}" 
+                <input type="number" class="form-control" id="instance_cpu" name="cpu"
+                       value="{{ vm_defaults.cpu if vm_defaults else 2 }}"
                        min="1" max="32" required>
             </div>
             <div class="col-md-2">
                 <label for="instance_ram" class="form-label">RAM (GiB)</label>
-                <input type="number" class="form-control" id="instance_ram" name="ram" 
-                       value="{{ vm_defaults.memory if vm_defaults else 4 }}" 
+                <input type="number" class="form-control" id="instance_ram" name="ram"
+                       value="{{ vm_defaults.memory if vm_defaults else 4 }}"
                        min="1" max="128" required>
             </div>
             <div class="col-md-2">
                 <label for="instance_disk" class="form-label">Disk (GiB)</label>
-                <input type="number" class="form-control" id="instance_disk" name="disk" 
-                       value="{{ vm_defaults.disk if vm_defaults else 20 }}" 
+                <input type="number" class="form-control" id="instance_disk" name="disk"
+                       value="{{ vm_defaults.disk if vm_defaults else 20 }}"
                        min="5" max="500" required>
             </div>
             <div class="col-md-2">
@@ -187,6 +215,9 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                        </th>
                         <th>Name</th>
                         <th>Type</th>
                         <th>IP Address</th>
@@ -201,6 +232,9 @@
                 <tbody>
                     {% for instance in instances %}
                     <tr>
+                        <td>
+                            <input type="checkbox" class="instance-checkbox" value="{{ instance.name }}" data-status="{{ instance.status }}" onchange="updateSelectedCount()">
+                        </td>
                         <td><strong>{{ instance.name }}</strong></td>
                         <td>{{ instance.type }}</td>
                         <td>
@@ -334,9 +368,91 @@
     </div>
 </div>
 
+<!-- Bulk Create Modal -->
+<div class="modal fade" id="bulkCreateModal" tabindex="-1" aria-labelledby="bulkCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="bulkCreateModalLabel">
+                    <i class="bi bi-plus-circle"></i> Bulk Create Instances
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bulk-create-form">
+                    <div class="mb-3">
+                        <label for="bulk_names" class="form-label">Instance Names</label>
+                        <textarea class="form-control" id="bulk_names" rows="4" 
+                                  placeholder="Enter one name per line, or comma-separated names&#10;Example:&#10;vm-001&#10;vm-002&#10;vm-003" required></textarea>
+                        <div class="form-text">Names must be alphanumeric (hyphens and underscores allowed). Must start with a letter.</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="bulk_cpu" class="form-label">CPU (cores)</label>
+                            <input type="number" class="form-control" id="bulk_cpu" 
+                                   value="{{ vm_defaults.cpu if vm_defaults else 2 }}" min="1" max="32" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="bulk_ram" class="form-label">RAM (GiB)</label>
+                            <input type="number" class="form-control" id="bulk_ram" 
+                                   value="{{ vm_defaults.memory if vm_defaults else 4 }}" min="1" max="128" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="bulk_disk" class="form-label">Disk (GiB)</label>
+                            <input type="number" class="form-control" id="bulk_disk" 
+                                   value="{{ vm_defaults.disk if vm_defaults else 20 }}" min="5" max="500" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="bulk_type" class="form-label">Type</label>
+                            <select class="form-select" id="bulk_type">
+                                <option value="virtual-machine">VM</option>
+                                <option value="container">Container</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+                <div id="bulk-preflight-result" class="mt-3"></div>
+                <div class="progress mt-3" style="display: none;" id="bulk-create-progress-container">
+                    <div id="bulk-create-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;"></div>
+                </div>
+                <div id="bulk-create-result" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="bulkCreateCheckBtn" onclick="checkBulkPreflight()">
+                    <i class="bi bi-shield-check"></i> Check Prerequisites
+                </button>
+                <button type="button" class="btn btn-primary" id="bulkCreateStartBtn" onclick="startBulkCreate()" disabled>
+                    <i class="bi bi-play-fill"></i> Start Bulk Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Operation Progress Modal -->
+<div class="modal fade" id="bulkProgressModal" tabindex="-1" aria-labelledby="bulkProgressModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkProgressModalLabel">
+                    <i class="bi bi-hourglass-split"></i> Bulk Operation in Progress
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3" style="height: 25px;">
+                    <div id="bulk-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;"></div>
+                </div>
+                <p id="bulk-progress-message" class="text-center mb-2">Starting...</p>
+                <div id="bulk-progress-details" class="small text-muted text-center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="action-result" style="display:none;"></div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/dashboard.js?v=3"></script>
+<script src="/static/js/dashboard.js?v=4"></script>
 {% endblock %}

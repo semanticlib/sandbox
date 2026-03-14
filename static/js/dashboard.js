@@ -194,3 +194,286 @@ async function deleteInstance() {
 
     instanceToDelete = null;
 }
+
+// ============== Bulk Operations ==============
+
+// Track selected instances
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.instance-checkbox');
+    
+    checkboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
+    const countElement = document.getElementById('selected-count');
+    const selectAllCheckbox = document.getElementById('select-all');
+    const allCheckboxes = document.querySelectorAll('.instance-checkbox');
+    
+    countElement.textContent = `${checkboxes.length} selected`;
+    
+    // Update "select all" checkbox state
+    selectAllCheckbox.checked = checkboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+}
+
+// Bulk Create Functions
+let bulkOperationId = null;
+let bulkPollingInterval = null;
+
+async function checkBulkPreflight() {
+    const namesText = document.getElementById('bulk_names').value.trim();
+    if (!namesText) {
+        document.getElementById('bulk-preflight-result').innerHTML = 
+            '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Please enter instance names first</div>';
+        document.getElementById('bulkCreateStartBtn').disabled = true;
+        return;
+    }
+    
+    const names = namesText.split(/[\n,]+/).map(n => n.trim()).filter(n => n);
+    const cpu = parseInt(document.getElementById('bulk_cpu').value);
+    const ram = parseInt(document.getElementById('bulk_ram').value);
+    const disk = parseInt(document.getElementById('bulk_disk').value);
+    
+    const resultDiv = document.getElementById('bulk-preflight-result');
+    resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Checking prerequisites...</div>';
+    
+    try {
+        const params = new URLSearchParams({
+            names: names.join(','),
+            cpu: cpu.toString(),
+            ram: ram.toString(),
+            disk: disk.toString()
+        });
+        
+        const response = await fetch(`/instances/bulk/preflight?${params}`);
+        const checks = await response.json();
+        
+        let html = '';
+        
+        if (checks.passed) {
+            html = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All pre-flight checks passed!</div>';
+            html += `<div class="alert alert-info mt-2 mb-0">
+                <strong>Resources required:</strong><br>
+                CPU: ${checks.resources_requested?.cpu || 0} vCPUs | 
+                RAM: ${checks.resources_requested?.ram_gb || 0} GB | 
+                Disk: ${checks.resources_requested?.disk_gb || 0} GB
+            </div>`;
+            document.getElementById('bulkCreateStartBtn').disabled = false;
+        } else {
+            html = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Pre-flight checks failed:</div><ul class="mb-0">';
+            checks.errors.forEach(err => {
+                html += `<li>${err}</li>`;
+            });
+            checks.warnings.forEach(warn => {
+                html += `<li class="text-warning">${warn}</li>`;
+            });
+            html += '</ul>';
+            document.getElementById('bulkCreateStartBtn').disabled = true;
+        }
+        
+        // Add system info
+        const infoLines = [];
+        if (checks.disk_free_gb !== undefined) {
+            infoLines.push(`Disk: ${checks.disk_free_gb} GB free`);
+        }
+        if (checks.ram_available_gb !== undefined) {
+            infoLines.push(`RAM: ${checks.ram_available_gb} GB available`);
+        }
+        if (checks.cpu_logical_cores !== undefined) {
+            infoLines.push(`CPU: ${checks.cpu_logical_cores} cores`);
+        }
+        if (checks.existing_instances !== undefined) {
+            infoLines.push(`Existing VMs: ${checks.existing_instances} (${checks.running_instances} running)`);
+        }
+        
+        if (infoLines.length > 0) {
+            html += `<div class="alert alert-info mt-2 mb-0"><i class="bi bi-pc-display"></i> <strong>System Status:</strong><br>${infoLines.join(' | ')}</div>`;
+        }
+        
+        resultDiv.innerHTML = html;
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error: ${error.message}</div>`;
+        document.getElementById('bulkCreateStartBtn').disabled = true;
+    }
+}
+
+async function startBulkCreate() {
+    const namesText = document.getElementById('bulk_names').value.trim();
+    const names = namesText.split(/[\n,]+/).map(n => n.trim()).filter(n => n);
+    
+    if (names.length === 0) {
+        alert('Please enter at least one instance name');
+        return;
+    }
+    
+    const formData = {
+        names: names,
+        cpu: parseInt(document.getElementById('bulk_cpu').value),
+        ram: parseInt(document.getElementById('bulk_ram').value),
+        disk: parseInt(document.getElementById('bulk_disk').value),
+        type: document.getElementById('bulk_type').value
+    };
+    
+    // Close the bulk create modal and show progress modal
+    const bulkCreateModal = bootstrap.Modal.getInstance(document.getElementById('bulkCreateModal'));
+    bulkCreateModal.hide();
+    
+    const progressModal = new bootstrap.Modal(document.getElementById('bulkProgressModal'));
+    progressModal.show();
+    
+    document.getElementById('bulk-progress-bar').style.width = '0%';
+    document.getElementById('bulk-progress-message').textContent = `Starting bulk creation of ${names.length} instances...`;
+    document.getElementById('bulk-progress-details').textContent = '';
+    
+    try {
+        const response = await fetch('/instances/bulk/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message);
+        }
+        
+        bulkOperationId = data.operation_id;
+        
+        // Start polling for progress
+        bulkPollingInterval = setInterval(pollBulkOperation, 2000);
+        
+    } catch (error) {
+        clearInterval(bulkPollingInterval);
+        document.getElementById('bulk-progress-message').textContent = 'Failed to start bulk creation';
+        document.getElementById('bulk-progress-bar').className = 'progress-bar bg-danger';
+        setTimeout(() => location.reload(), 3000);
+    }
+}
+
+async function pollBulkOperation() {
+    if (!bulkOperationId) return;
+    
+    try {
+        const response = await fetch(`/instances/bulk/status/${bulkOperationId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const op = data.operation;
+            const progressBar = document.getElementById('bulk-progress-bar');
+            const progressMessage = document.getElementById('bulk-progress-message');
+            const progressDetails = document.getElementById('bulk-progress-details');
+            
+            progressBar.style.width = `${op.progress}%`;
+            progressMessage.textContent = op.message;
+            progressDetails.textContent = `Completed: ${op.completed}/${op.total} | Failed: ${op.failed}`;
+            
+            if (op.done) {
+                clearInterval(bulkPollingInterval);
+                
+                if (op.error) {
+                    progressBar.className = 'progress-bar bg-danger';
+                    progressMessage.textContent = `Failed: ${op.error}`;
+                } else if (op.failed > 0) {
+                    progressBar.className = 'progress-bar bg-warning';
+                    progressMessage.textContent = 'Completed with errors';
+                } else {
+                    progressBar.className = 'progress-bar bg-success';
+                    progressMessage.textContent = 'Bulk creation completed successfully!';
+                }
+                
+                // Close modal after delay and reload
+                setTimeout(() => {
+                    const progressModal = bootstrap.Modal.getInstance(document.getElementById('bulkProgressModal'));
+                    progressModal.hide();
+                    location.reload();
+                }, 3000);
+            }
+        }
+    } catch (error) {
+        console.error('Error polling bulk operation:', error);
+    }
+}
+
+// Bulk Stop/Delete Functions
+async function bulkStopSelected() {
+    const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
+    const names = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (names.length === 0) {
+        alert('Please select at least one instance');
+        return;
+    }
+    
+    if (!confirm(`Stop ${names.length} selected instance(s)?`)) return;
+    
+    await executeBulkOperation('stop', names);
+}
+
+async function bulkDeleteSelected() {
+    const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
+    const names = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (names.length === 0) {
+        alert('Please select at least one instance');
+        return;
+    }
+    
+    if (!confirm(`Delete ${names.length} selected instance(s)? This cannot be undone!`)) return;
+    
+    await executeBulkOperation('delete', names);
+}
+
+async function bulkStopAll() {
+    if (!confirm('Stop ALL running instances?')) return;
+    
+    await executeBulkOperation('stop', [], true);
+}
+
+async function bulkDeleteAll() {
+    if (!confirm('Delete ALL stopped instances? This cannot be undone!')) return;
+    
+    await executeBulkOperation('delete', [], true);
+}
+
+async function executeBulkOperation(action, names, all = false) {
+    const progressModal = new bootstrap.Modal(document.getElementById('bulkProgressModal'));
+    progressModal.show();
+    
+    document.getElementById('bulk-progress-bar').style.width = '0%';
+    document.getElementById('bulk-progress-message').textContent = all ? 
+        `${action === 'stop' ? 'Stopping' : 'Deleting'} all instances...` :
+        `${action === 'stop' ? 'Stopping' : 'Deleting'} ${names.length} instances...`;
+    document.getElementById('bulk-progress-details').textContent = '';
+    
+    try {
+        const response = await fetch(`/instances/bulk/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ names, all })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message);
+        }
+        
+        bulkOperationId = data.operation_id;
+        bulkPollingInterval = setInterval(pollBulkOperation, 2000);
+        
+    } catch (error) {
+        clearInterval(bulkPollingInterval);
+        document.getElementById('bulk-progress-message').textContent = `Failed: ${error.message}`;
+        document.getElementById('bulk-progress-bar').className = 'progress-bar bg-danger';
+        setTimeout(() => {
+            progressModal.hide();
+            location.reload();
+        }, 3000);
+    }
+}

@@ -189,6 +189,16 @@ async def save_vm_settings(
     db: Session = Depends(get_db)
 ):
     """Save default VM settings"""
+    # Validate cloud-init template if provided
+    if cloud_init.strip():
+        from services.cloud_init_service import validate_cloud_init_template
+        is_valid, error_msg = validate_cloud_init_template(cloud_init)
+        if not is_valid:
+            return RedirectResponse(
+                url=f"/settings?vm_error={error_msg}",
+                status_code=303
+            )
+
     settings = db.query(VMDefaultSettings).first()
 
     if settings:
@@ -208,3 +218,13 @@ async def save_vm_settings(
     db.commit()
 
     return RedirectResponse(url="/settings?vm_success=VM defaults saved successfully", status_code=303)
+
+
+@router.get("/settings/vm/template")
+async def get_cloud_init_template():
+    """Get the default cloud-init template"""
+    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE
+    return JSONResponse({
+        "success": True,
+        "template": DEFAULT_CLOUD_INIT_TEMPLATE
+    })

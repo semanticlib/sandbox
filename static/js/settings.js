@@ -98,35 +98,25 @@ async function generateCertificate() {
     }
 }
 
-function loadCloudInitTemplate() {
+async function loadCloudInitTemplate() {
     const cloudInitField = document.getElementById('cloud_init');
-    const template = `#cloud-config
-# Default user configuration
-users:
-  - name: {username}
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    ssh_authorized_keys:
-      - ssh-ed25519 {public_key}
-
-# Update packages on first boot
-package_update: true
-package_upgrade: false
-
-# Install additional packages
-packages:
-  - zip
-  - plocate
-
-# Add swap file
-runcmd:
-  - [ fallocate, -l, 2G, /swapfile ]
-  - [ chmod, 600, /swapfile ]
-  - [ mkswap, /swapfile ]
-  - [ swapon, /swapfile ]
-  - [ sed, -i, '$a/swapfile none swap sw 0 0', /etc/fstab ]
-`;
-    cloudInitField.value = template;
+    cloudInitField.disabled = true;
+    cloudInitField.placeholder = 'Loading template...';
+    
+    try {
+        const response = await fetch('/settings/vm/template');
+        const data = await response.json();
+        
+        if (data.success) {
+            cloudInitField.value = data.template;
+        } else {
+            cloudInitField.value = '# Failed to load template';
+        }
+    } catch (error) {
+        cloudInitField.value = `# Error loading template: ${error.message}`;
+    } finally {
+        cloudInitField.disabled = false;
+    }
 }
 
 // Initialize connection fields on page load

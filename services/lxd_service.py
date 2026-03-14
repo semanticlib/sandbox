@@ -169,16 +169,16 @@ class LXDService:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
-    def delete_instance(self, name: str, force: bool = False) -> Dict[str, Any]:
+    def delete_instance(self, name: str) -> Dict[str, Any]:
         """Delete an instance"""
         try:
             instance = self.client.instances.get(name)
 
-            # Stop instance first if running and not force delete
-            if instance.status == "Running" and not force:
+            # Check if instance is running
+            if instance.status == "Running":
                 return {
                     "success": False,
-                    "message": f"Instance '{name}' is running. Stop it first or check 'Force delete'."
+                    "message": f"Instance '{name}' is running. Please stop it first before deleting."
                 }
 
             # Delete the instance

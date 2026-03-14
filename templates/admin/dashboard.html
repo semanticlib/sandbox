@@ -259,7 +259,7 @@
                                     <i class="bi bi-play-fill"></i>
                                 </button>
                                 {% endif %}
-                                <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{{ instance.name }}')" title="Delete">
+                                <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{{ instance.name }}', '{{ instance.status }}')" title="Delete">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </div>
@@ -307,16 +307,14 @@
                     <i class="bi bi-exclamation-circle"></i>
                     <strong>Warning:</strong> This action cannot be undone. All data will be permanently deleted.
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="forceDelete">
-                    <label class="form-check-label" for="forceDelete">
-                        Force delete (even if instance is running)
-                    </label>
+                <div id="stopWarning" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> Instance must be stopped before deletion.
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="deleteInstance()">
+                <button type="button" class="btn btn-danger" id="deleteConfirmBtn" onclick="deleteInstance()">
                     <i class="bi bi-trash"></i> Delete
                 </button>
             </div>
@@ -328,5 +326,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/dashboard.js?v=3"></script>
 {% endblock %}

@@ -145,17 +145,31 @@ async function stopInstance(name) {
 let instanceToDelete = null;
 const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
-function confirmDelete(name) {
+function confirmDelete(name, status) {
     instanceToDelete = name;
     document.getElementById('deleteInstanceName').textContent = name;
-    document.getElementById('forceDelete').checked = false;
+    
+    const deleteBtn = document.getElementById('deleteConfirmBtn');
+    const stopWarning = document.getElementById('stopWarning');
+    
+    // Disable delete button if instance is running
+    if (status === 'Running') {
+        stopWarning.style.display = 'block';
+        stopWarning.innerHTML = '<i class="bi bi-info-circle"></i> <strong>Note:</strong> Instance must be stopped before deletion.';
+        deleteBtn.disabled = true;
+        deleteBtn.title = 'Stop the instance first before deleting';
+    } else {
+        stopWarning.style.display = 'none';
+        deleteBtn.disabled = false;
+        deleteBtn.title = '';
+    }
+    
     deleteModal.show();
 }
 
 async function deleteInstance() {
     if (!instanceToDelete) return;
 
-    const forceDelete = document.getElementById('forceDelete').checked;
     const resultDiv = document.getElementById('action-result');
 
     deleteModal.hide();
@@ -163,7 +177,7 @@ async function deleteInstance() {
     resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Deleting instance...</div>';
 
     try {
-        const response = await fetch(`/instances/${instanceToDelete}/delete?force=${forceDelete}`, {
+        const response = await fetch(`/instances/${instanceToDelete}/delete`, {
             method: 'DELETE'
         });
         const data = await response.json();

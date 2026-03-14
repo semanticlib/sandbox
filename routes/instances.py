@@ -145,8 +145,7 @@ async def stop_instance(
 async def delete_instance(
     instance_name: str,
     request: Request,
-    db: Session = Depends(get_db),
-    force: bool = False
+    db: Session = Depends(get_db)
 ):
     """Delete an LXD instance and its SSH keys"""
     lxd_service = LXDService(db)
@@ -156,8 +155,8 @@ async def delete_instance(
         return JSONResponse({"success": False, "message": "LXD not configured"})
 
     # Delete the LXD instance
-    result = lxd_service.delete_instance(instance_name, force)
-    
+    result = lxd_service.delete_instance(instance_name)
+
     if result.get("success"):
         # Clean up SSH keys folder
         ssh_keys_path = os.path.join("_instances", instance_name)
@@ -167,7 +166,7 @@ async def delete_instance(
                 result["message"] = f"Instance '{instance_name}' and SSH keys deleted successfully"
             except Exception as e:
                 result["message"] = f"Instance deleted, but failed to remove SSH keys: {e}"
-    
+
     return JSONResponse(result)
 
 

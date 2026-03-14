@@ -42,7 +42,8 @@ class InstanceTaskService:
         disk: int,
         instance_type: str,
         lxd_settings: dict,
-        cloud_init: Optional[str] = None
+        cloud_init: Optional[str] = None,
+        vm_swap: int = 2
     ):
         """Background task to create an instance and track progress"""
         from services.lxd_client import get_lxd_client
@@ -142,7 +143,11 @@ class InstanceTaskService:
                     if cloud_init:
                         # Use generated SSH public key if available, otherwise use template as-is
                         if ssh_keys and ssh_keys.get("public_key"):
-                            vm_config["user.user-data"] = get_cloud_init_template(cloud_init, ssh_keys["public_key"])
+                            vm_config["user.user-data"] = get_cloud_init_template(
+                                cloud_init, 
+                                ssh_keys["public_key"],
+                                vm_swap
+                            )
                         else:
                             vm_config["user.user-data"] = cloud_init
                     
@@ -249,13 +254,14 @@ class InstanceTaskService:
         disk: int,
         instance_type: str,
         lxd_settings: dict,
-        cloud_init: Optional[str] = None
+        cloud_init: Optional[str] = None,
+        vm_swap: int = 2
     ) -> str:
         """Start a new instance creation task and return task ID"""
         task_id = str(uuid.uuid4())
         thread = threading.Thread(
             target=InstanceTaskService.create_instance_background,
-            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init)
+            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_swap)
         )
         thread.daemon = True
         thread.start()

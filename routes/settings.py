@@ -185,6 +185,7 @@ async def save_vm_settings(
     cpu: int = Form(...),
     memory: int = Form(...),
     disk: int = Form(...),
+    swap: int = Form(...),
     cloud_init: str = Form(""),
     db: Session = Depends(get_db)
 ):
@@ -205,12 +206,14 @@ async def save_vm_settings(
         settings.cpu = cpu
         settings.memory = memory
         settings.disk = disk
+        settings.swap = swap
         settings.cloud_init = cloud_init if cloud_init else None
     else:
         settings = VMDefaultSettings(
             cpu=cpu,
             memory=memory,
             disk=disk,
+            swap=swap,
             cloud_init=cloud_init if cloud_init else None
         )
         db.add(settings)

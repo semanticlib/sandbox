@@ -7,6 +7,9 @@ from jinja2 import filters
 from core.database import engine, Base
 from core.config import settings
 
+# Import models BEFORE creating tables
+from core import models  # noqa: F401
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 

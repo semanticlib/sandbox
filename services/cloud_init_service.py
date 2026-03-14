@@ -23,7 +23,7 @@ packages:
 
 # Add swap file
 runcmd:
-  - [ fallocate, -l, 2G, /swapfile ]
+  - [ fallocate, -l, '{swap_size}G', /swapfile ]
   - [ chmod, 600, /swapfile ]
   - [ mkswap, /swapfile ]
   - [ swapon, /swapfile ]
@@ -31,16 +31,17 @@ runcmd:
 """
 
 
-def get_cloud_init_template(custom_template: str = None, public_key: str = None) -> str:
+def get_cloud_init_template(custom_template: str = None, public_key: str = None, swap_size: int = 2) -> str:
     """
     Get cloud-init template with placeholders replaced.
     
     Args:
         custom_template: Custom template from database. If None, uses default template.
         public_key: SSH public key to use. If None, uses value from settings.
+        swap_size: Swap size in GiB. Default is 2.
     
     Returns:
-        Cloud-init template with username and public key replaced
+        Cloud-init template with username, public key, and swap size replaced
     """
     template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE
     
@@ -50,7 +51,8 @@ def get_cloud_init_template(custom_template: str = None, public_key: str = None)
     # Replace placeholders with values from settings
     return template.format(
         username=settings.DEFAULT_USERNAME,
-        public_key=ssh_public_key
+        public_key=ssh_public_key,
+        swap_size=swap_size
     )
 
 

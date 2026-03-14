@@ -135,7 +135,7 @@
     <!-- VM Settings Tab -->
     <div class="tab-pane fade" id="vm-settings" role="tabpanel">
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-8">
                 <div class="card mb-4">
                     <div class="card-header">
                         <i class="bi bi-pc-display"></i> Default VM Configuration
@@ -167,11 +167,17 @@
                                            value="{{ vm_settings.memory if vm_settings else 4 }}"
                                            min="1" max="128" required>
                                 </div>
-                                <div class="col">  
+                                <div class="col">
                                     <label for="default_disk" class="form-label">Default Disk Size (GiB)</label>
                                     <input type="number" class="form-control" id="default_disk" name="disk"
                                            value="{{ vm_settings.disk if vm_settings else 20 }}"
                                            min="5" max="500" required>
+                                </div>
+                                <div class="col">
+                                    <label for="default_swap" class="form-label">Default Swap (GiB)</label>
+                                    <input type="number" class="form-control" id="default_swap" name="swap"
+                                           value="{{ vm_settings.swap if vm_settings and vm_settings.swap else 2 }}"
+                                           min="0" max="32" required>
                                 </div>
                             </div>
                             <div class="mb-3">

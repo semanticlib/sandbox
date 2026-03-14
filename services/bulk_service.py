@@ -645,17 +645,21 @@ class BulkOperationService:
                     result = lxd_service.delete_instance(name)
                     if result.get("success"):
                         completed += 1
-                        
-                        # Clean up SSH keys folder
-                        ssh_keys_path = os.path.join("_instances", name)
-                        ssh_cleanup_msg = ""
-                        if os.path.exists(ssh_keys_path):
-                            try:
-                                shutil.rmtree(ssh_keys_path)
-                                ssh_cleanup_msg = " (SSH keys cleaned)"
-                            except Exception as cleanup_error:
-                                ssh_cleanup_msg = f" (SSH key cleanup failed: {cleanup_error})"
-                        
+
+                        # Clean up SSH keys folder (with path traversal protection)
+                        from services.ssh_key_service import _safe_instance_path
+                        try:
+                            ssh_keys_path = _safe_instance_path(name, "_instances")
+                            ssh_cleanup_msg = ""
+                            if ssh_keys_path.exists():
+                                try:
+                                    shutil.rmtree(ssh_keys_path)
+                                    ssh_cleanup_msg = " (SSH keys cleaned)"
+                                except Exception as cleanup_error:
+                                    ssh_cleanup_msg = f" (SSH key cleanup failed)"
+                        except ValueError:
+                            ssh_cleanup_msg = " (invalid instance name)"
+
                         bulk_operations[op_id]["results"].append({
                             "name": name,
                             "success": True,

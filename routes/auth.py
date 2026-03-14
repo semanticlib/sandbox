@@ -90,7 +90,13 @@ async def setup_admin(
 
     access_token = create_access_token(data={"sub": admin.username})
     response = RedirectResponse(url="/", status_code=303)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=1800)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=3600,  # 1 hour (matches ACCESS_TOKEN_EXPIRE_MINUTES)
+        samesite="lax"
+    )
     return response
 
 
@@ -154,7 +160,13 @@ async def login(
 
     access_token = create_access_token(data={"sub": user.username})
     response = RedirectResponse(url="/", status_code=303)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=1800)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=3600,  # 1 hour (matches ACCESS_TOKEN_EXPIRE_MINUTES)
+        samesite="lax"
+    )
     return response
 
 

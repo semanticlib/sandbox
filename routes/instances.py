@@ -2,7 +2,7 @@
 import os
 import shutil
 import uuid
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -15,10 +15,42 @@ from services.instance_tasks import InstanceTaskService, creation_tasks
 router = APIRouter(prefix="/instances", tags=["instances"])
 
 
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    """Get current logged-in user from session cookie"""
+    from jose import JWTError, jwt
+    from core.config import settings
+
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        user = db.query(AdminUser).filter(AdminUser.username == username).first()
+        return user
+    except (JWTError, Exception):
+        return None
+
+
+def require_auth(request: Request, db: Session = Depends(get_db)):
+    """Dependency to require authentication"""
+    user = get_current_user(request, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+            headers={"Location": "/login"}
+        )
+    return user
+
+
 @router.post("/create")
 async def create_instance(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Create a new instance (VM or container)"""
     try:
@@ -104,7 +136,12 @@ async def create_instance(
 
 
 @router.get("/create/status/{task_id}")
-async def get_instance_creation_status(task_id: str):
+async def get_instance_creation_status(
+    task_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
     """Get the status of an instance creation task"""
     if task_id not in creation_tasks:
         return JSONResponse({
@@ -130,7 +167,8 @@ async def bulk_preflight_check(
     cpu: int = 2,
     ram: int = 4,
     disk: int = 20,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Run pre-flight checks before bulk operations"""
     from services.bulk_service import BulkOperationService
@@ -153,7 +191,8 @@ async def bulk_preflight_check(
 @router.post("/bulk/create")
 async def bulk_create_instances(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Create multiple instances at once"""
     from services.bulk_service import BulkOperationService
@@ -252,7 +291,8 @@ async def bulk_create_instances(
 @router.post("/bulk/stop")
 async def bulk_stop_instances(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Stop multiple instances at once"""
     from services.bulk_service import BulkOperationService
@@ -300,7 +340,8 @@ async def bulk_stop_instances(
 @router.post("/bulk/start")
 async def bulk_start_instances(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Start multiple instances at once"""
     from services.bulk_service import BulkOperationService
@@ -348,7 +389,8 @@ async def bulk_start_instances(
 @router.post("/bulk/delete")
 async def bulk_delete_instances(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Delete multiple instances at once"""
     from services.bulk_service import BulkOperationService
@@ -394,7 +436,12 @@ async def bulk_delete_instances(
 
 
 @router.get("/bulk/status/{operation_id}")
-async def get_bulk_operation_status(operation_id: str):
+async def get_bulk_operation_status(
+    operation_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
     """Get the status of a bulk operation"""
     from services.bulk_service import BulkOperationService
 
@@ -413,7 +460,11 @@ async def get_bulk_operation_status(operation_id: str):
 
 
 @router.get("/bulk/operations")
-async def list_bulk_operations():
+async def list_bulk_operations(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
     """List all recent bulk operations"""
     from services.bulk_service import BulkOperationService
 
@@ -430,7 +481,8 @@ async def list_bulk_operations():
 async def start_instance(
     instance_name: str,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Start an LXD instance"""
     lxd_service = LXDService(db)
@@ -447,7 +499,8 @@ async def start_instance(
 async def stop_instance(
     instance_name: str,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Stop an LXD instance"""
     lxd_service = LXDService(db)
@@ -464,7 +517,8 @@ async def stop_instance(
 async def delete_instance(
     instance_name: str,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
 ):
     """Delete an LXD instance and its SSH keys"""
     from services.jump_user_service import delete_jump_user
@@ -483,15 +537,19 @@ async def delete_instance(
     result = lxd_service.delete_instance(instance_name)
 
     if result.get("success"):
-        # Clean up SSH keys folder
-        ssh_keys_path = os.path.join("_instances", instance_name)
-        if os.path.exists(ssh_keys_path):
-            try:
-                shutil.rmtree(ssh_keys_path)
-                result["message"] = f"Instance '{instance_name}' and SSH keys deleted successfully"
-            except Exception as e:
-                result["message"] = f"Instance deleted, but failed to remove SSH keys: {e}"
-        
+        # Clean up SSH keys folder (with path traversal protection)
+        from services.ssh_key_service import _safe_instance_path
+        try:
+            ssh_keys_path = _safe_instance_path(instance_name, "_instances")
+            if ssh_keys_path.exists():
+                try:
+                    shutil.rmtree(ssh_keys_path)
+                    result["message"] = "Instance and SSH keys deleted successfully"
+                except Exception:
+                    result["message"] = "Instance deleted, SSH key cleanup failed"
+        except ValueError:
+            result["message"] = "Instance deleted, invalid instance name format"
+
         # Delete jump user from host system
         try:
             delete_jump_user(username)
@@ -502,7 +560,12 @@ async def delete_instance(
 
 
 @router.get("/{instance_name}/ssh-keys")
-async def get_instance_ssh_keys(instance_name: str):
+async def get_instance_ssh_keys(
+    instance_name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
     """Get SSH keys for a VM instance"""
     from services.ssh_key_service import get_instance_keys
     
@@ -522,7 +585,12 @@ async def get_instance_ssh_keys(instance_name: str):
 
 
 @router.get("/{instance_name}/download-ssh-config")
-async def download_ssh_config(instance_name: str, db: Session = Depends(get_db)):
+async def download_ssh_config(
+    instance_name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: AdminUser = Depends(require_auth)
+):
     """Generate and download SSH config files as a zip"""
     import zipfile
     import io
@@ -583,17 +651,24 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
     
     # Generate SSH config files with templates
     create_ssh_config_files(instance_name, keys, username, vm_ip, ssh_template, instructions_template)
-    
-    # Create zip file in memory
+
+    # Create zip file in memory (with path traversal protection)
+    from services.ssh_key_service import _safe_instance_path
+    try:
+        instance_dir = _safe_instance_path(instance_name, "_instances")
+    except ValueError:
+        return JSONResponse({
+            "success": False,
+            "message": "Invalid instance name"
+        })
+
     zip_buffer = io.BytesIO()
-    instance_dir = os.path.join("_instances", instance_name)
-    
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for filename in ['id_ed25519', 'id_ed25519.pub', 'ssh-config', 'instructions.txt']:
-            filepath = os.path.join(instance_dir, filename)
-            if os.path.exists(filepath):
+            filepath = instance_dir / filename
+            if filepath.exists():
                 zip_file.write(filepath, filename)
-    
+
     zip_buffer.seek(0)
 
     return StreamingResponse(

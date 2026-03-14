@@ -100,8 +100,12 @@ def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: 
         instructions_template: Custom instructions template (optional)
         base_path: Base directory for storing config files
     """
-    instance_dir = os.path.join(base_path, vm_name)
-    os.makedirs(instance_dir, exist_ok=True)
+    # Import safe path function to prevent path traversal
+    from services.ssh_key_service import _safe_instance_path
+    
+    # Safely resolve path
+    instance_dir = _safe_instance_path(vm_name, base_path)
+    instance_dir.mkdir(parents=True, exist_ok=True)
     
     # Get host IP from settings or auto-detect
     host_ip = settings.HOST_SERVER_IP

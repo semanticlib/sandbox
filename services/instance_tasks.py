@@ -44,7 +44,8 @@ class InstanceTaskService:
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
         vm_swap: int = 2,
-        vm_username: str = "ubuntu"
+        vm_username: str = "ubuntu",
+        image_fingerprint: Optional[str] = None
     ):
         """Background task to create an instance and track progress"""
         from services.lxd_client import get_lxd_client
@@ -98,39 +99,46 @@ class InstanceTaskService:
                     creation_tasks[task_id]["message"] = "Warning: SSH key generation failed, continuing..."
 
             creation_tasks[task_id]["progress"] = 40
-            creation_tasks[task_id]["message"] = "Getting Ubuntu image..."
+            creation_tasks[task_id]["message"] = "Preparing image..."
 
             # Create instance from image - LXD will auto-download if not present
             try:
-                # First, try to find a local Ubuntu 24.04 image
-                image_alias = None
-                local_image = None
-
-                for img in client.images.all():
-                    # Check if it's Ubuntu 24.04 using properties dict
-                    desc = img.properties.get('description', '').lower()
-                    if "ubuntu" in desc and "24.04" in desc:
-                        local_image = img
-                        if img.aliases:
-                            image_alias = img.aliases[0]
-                        break
-
-                if local_image:
-                    # Use the local image fingerprint
+                image_source = None
+                
+                # Use specified image fingerprint if provided
+                if image_fingerprint:
+                    creation_tasks[task_id]["message"] = f"Using selected image: {image_fingerprint[:12]}..."
                     image_source = {
                         "type": "image",
-                        "fingerprint": local_image.fingerprint
+                        "fingerprint": image_fingerprint
                     }
-                    creation_tasks[task_id]["message"] = f"Using local image: {local_image.fingerprint[:12]}"
                 else:
-                    # Download from Ubuntu simplestreams
-                    creation_tasks[task_id]["message"] = "Downloading Ubuntu 24.04 image..."
-                    image_source = {
-                        "type": "image",
-                        "protocol": "simplestreams",
-                        "server": "https://cloud-images.ubuntu.com/releases",
-                        "alias": "24.04"
-                    }
+                    # First, try to find a local Ubuntu 24.04 image
+                    local_image = None
+
+                    for img in client.images.all():
+                        # Check if it's Ubuntu 24.04 using properties dict
+                        desc = img.properties.get('description', '').lower()
+                        if "ubuntu" in desc and "24.04" in desc:
+                            local_image = img
+                            break
+
+                    if local_image:
+                        # Use the local image fingerprint
+                        image_source = {
+                            "type": "image",
+                            "fingerprint": local_image.fingerprint
+                        }
+                        creation_tasks[task_id]["message"] = f"Using local image: {local_image.fingerprint[:12]}"
+                    else:
+                        # Download from Ubuntu simplestreams
+                        creation_tasks[task_id]["message"] = "Downloading Ubuntu 24.04 image..."
+                        image_source = {
+                            "type": "image",
+                            "protocol": "simplestreams",
+                            "server": "https://cloud-images.ubuntu.com/releases",
+                            "alias": "24.04"
+                        }
 
                 if instance_type == "virtual-machine":
                     # Create VM using API directly (virtual_machines.create() has issues with image type)
@@ -258,13 +266,14 @@ class InstanceTaskService:
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
         vm_swap: int = 2,
-        vm_username: str = "ubuntu"
+        vm_username: str = "ubuntu",
+        image_fingerprint: Optional[str] = None
     ) -> str:
         """Start a new instance creation task and return task ID"""
         task_id = str(uuid.uuid4())
         thread = threading.Thread(
             target=InstanceTaskService.create_instance_background,
-            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_swap, vm_username)
+            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint)
         )
         thread.daemon = True
         thread.start()

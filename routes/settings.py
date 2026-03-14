@@ -187,6 +187,9 @@ async def save_vm_settings(
     memory: int = Form(...),
     disk: int = Form(...),
     swap: int = Form(...),
+    image_fingerprint: str = Form(""),
+    image_alias: str = Form(""),
+    image_description: str = Form(""),
     cloud_init: str = Form(""),
     db: Session = Depends(get_db)
 ):
@@ -209,6 +212,9 @@ async def save_vm_settings(
         settings.memory = memory
         settings.disk = disk
         settings.swap = swap
+        settings.image_fingerprint = image_fingerprint if image_fingerprint else None
+        settings.image_alias = image_alias if image_alias else None
+        settings.image_description = image_description if image_description else None
         settings.cloud_init = cloud_init if cloud_init else None
     else:
         settings = VMDefaultSettings(
@@ -217,6 +223,9 @@ async def save_vm_settings(
             memory=memory,
             disk=disk,
             swap=swap,
+            image_fingerprint=image_fingerprint if image_fingerprint else None,
+            image_alias=image_alias if image_alias else None,
+            image_description=image_description if image_description else None,
             cloud_init=cloud_init if cloud_init else None
         )
         db.add(settings)
@@ -234,3 +243,57 @@ async def get_cloud_init_template():
         "success": True,
         "template": DEFAULT_CLOUD_INIT_TEMPLATE
     })
+
+
+@router.get("/settings/vm/images")
+async def get_available_images(db: Session = Depends(get_db)):
+    """Get available LXD images for VM creation"""
+    from services.lxd_service import LXDService
+    
+    lxd_service = LXDService(db)
+    lxd_service.get_client()
+    
+    if not lxd_service.is_connected():
+        return JSONResponse({
+            "success": False,
+            "message": "LXD not connected"
+        })
+    
+    try:
+        images = []
+        for img in lxd_service.client.images.all():
+            # Get image info
+            description = img.properties.get('description', 'Unknown')
+            aliases = [alias.name for alias in img.aliases]
+            
+            # Handle created_at which might be datetime or string
+            created_at = None
+            if img.created_at:
+                if hasattr(img.created_at, 'isoformat'):
+                    created_at = img.created_at.isoformat()
+                else:
+                    created_at = str(img.created_at)
+            
+            images.append({
+                "fingerprint": img.fingerprint[:12],  # Short fingerprint
+                "full_fingerprint": img.fingerprint,
+                "description": description,
+                "aliases": aliases,
+                "architecture": img.architecture,
+                "type": img.type,
+                "size": img.size,
+                "created_at": created_at
+            })
+        
+        # Sort by description
+        images.sort(key=lambda x: x['description'])
+        
+        return JSONResponse({
+            "success": True,
+            "images": images
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": str(e)
+        })

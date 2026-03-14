@@ -119,6 +119,76 @@ async function loadCloudInitTemplate() {
     }
 }
 
+// Load available LXD images
+async function loadImages() {
+    const select = document.getElementById('image_select');
+    const descField = document.getElementById('image_description');
+    const fpField = document.getElementById('image_fingerprint');
+    const aliasField = document.getElementById('image_alias');
+    
+    select.disabled = true;
+    select.innerHTML = '<option>Loading...</option>';
+    
+    try {
+        const response = await fetch('/settings/vm/images');
+        const data = await response.json();
+        
+        if (data.success && data.images.length > 0) {
+            select.innerHTML = '<option value="">-- Select an image --</option>';
+            
+            data.images.forEach(img => {
+                const aliasText = img.aliases.length > 0 ? ` (${img.aliases.join(', ')})` : '';
+                const option = document.createElement('option');
+                option.value = img.fingerprint;
+                option.textContent = `${img.description}${aliasText}`;
+                option.dataset.fullFingerprint = img.full_fingerprint;
+                option.dataset.alias = img.aliases.length > 0 ? img.aliases[0] : '';
+                option.dataset.description = img.description;
+                select.appendChild(option);
+            });
+            
+            // Restore previously selected image
+            if (fpField.value) {
+                for (let opt of select.options) {
+                    if (opt.dataset.fullFingerprint === fpField.value || opt.value === fpField.value) {
+                        opt.selected = true;
+                        descField.value = opt.dataset.description;
+                        aliasField.value = opt.dataset.alias;
+                        break;
+                    }
+                }
+            }
+        } else {
+            select.innerHTML = '<option value="">No images found</option>';
+        }
+    } catch (error) {
+        select.innerHTML = `<option value="">Error loading images</option>`;
+        console.error('Failed to load images:', error);
+    } finally {
+        select.disabled = false;
+    }
+}
+
+// Handle image selection
+function onImageSelect() {
+    const select = document.getElementById('image_select');
+    const descField = document.getElementById('image_description');
+    const fpField = document.getElementById('image_fingerprint');
+    const aliasField = document.getElementById('image_alias');
+    
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (selectedOption.value) {
+        descField.value = selectedOption.dataset.description || selectedOption.textContent;
+        fpField.value = selectedOption.dataset.fullFingerprint || selectedOption.value;
+        aliasField.value = selectedOption.dataset.alias || '';
+    } else {
+        descField.value = '';
+        fpField.value = '';
+        aliasField.value = '';
+    }
+}
+
 // Initialize connection fields on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Unix Socket is the default selection in the dropdown
@@ -137,6 +207,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (vmSuccess || vmError) {
         const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
         vmTab.show();
+        // Load images when VM tab is shown
+        loadImages();
     } else if (passwordSuccess || passwordError) {
         const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
         passwordTab.show();

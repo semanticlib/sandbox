@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.models import AdminUser
 from core.security import get_password_hash, verify_password, create_access_token
+from core.config import settings
 
 templates = Jinja2Templates(directory="templates")
+templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter()
 

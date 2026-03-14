@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.config import settings
 from services.metrics_service import get_system_metrics
 from services.lxd_service import LXDService
 
 templates = Jinja2Templates(directory="templates")
+templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter()
 

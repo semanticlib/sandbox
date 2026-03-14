@@ -18,6 +18,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Setup templates
 templates = Jinja2Templates(directory="templates")
 templates.env.filters['filesizeformat'] = filters.do_filesizeformat
+templates.env.globals['app_title'] = settings.APP_TITLE
 
 
 # ============== Include Routers ==============
@@ -103,4 +104,4 @@ async def root_redirect(request: Request, user: AdminUser = Depends(get_current_
 @app.on_event("startup")
 async def startup_event():
     """Application startup"""
-    print("🚀 Admin Panel started")
+    print(f"🚀 {settings.APP_TITLE} started")

@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.config import settings
 from core.security import get_password_hash, verify_password
 from services.lxd_service import LXDService
 
 templates = Jinja2Templates(directory="templates")
+templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter(tags=["settings"])
 

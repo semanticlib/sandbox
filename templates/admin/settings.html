@@ -156,6 +156,12 @@
                         <form method="post" action="/settings/vm">
                             <div class="mb-5 row">
                                 <div class="col">
+                                    <label for="default_username" class="form-label">Default Username</label>
+                                    <input type="text" class="form-control" id="default_username" name="username"
+                                           value="{{ vm_settings.username if vm_settings and vm_settings.username else 'ubuntu' }}"
+                                           required>
+                                </div>
+                                <div class="col">
                                     <label for="default_cpu" class="form-label">Default CPU Cores</label>
                                     <input type="number" class="form-control" id="default_cpu" name="cpu"
                                            value="{{ vm_settings.cpu if vm_settings else 2 }}"

@@ -49,6 +49,7 @@ async def create_instance(
         vm_settings = db.query(VMDefaultSettings).first()
         cloud_init_template = vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else None
         vm_swap = vm_settings.swap if vm_settings and vm_settings.swap else 2
+        vm_username = vm_settings.username if vm_settings and vm_settings.username else "ubuntu"
         
         # Pass the raw template (with placeholders) to the background task
         # The background task will generate SSH keys and process the template
@@ -71,7 +72,8 @@ async def create_instance(
             instance_type=instance_type,
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
-            vm_swap=vm_swap
+            vm_swap=vm_swap,
+            vm_username=vm_username
         )
 
         return JSONResponse({

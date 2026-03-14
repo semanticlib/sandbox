@@ -182,6 +182,7 @@ async def generate_certificate(request: Request):
 @router.post("/settings/vm")
 async def save_vm_settings(
     request: Request,
+    username: str = Form(...),
     cpu: int = Form(...),
     memory: int = Form(...),
     disk: int = Form(...),
@@ -203,6 +204,7 @@ async def save_vm_settings(
     settings = db.query(VMDefaultSettings).first()
 
     if settings:
+        settings.username = username
         settings.cpu = cpu
         settings.memory = memory
         settings.disk = disk
@@ -210,6 +212,7 @@ async def save_vm_settings(
         settings.cloud_init = cloud_init if cloud_init else None
     else:
         settings = VMDefaultSettings(
+            username=username,
             cpu=cpu,
             memory=memory,
             disk=disk,

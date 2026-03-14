@@ -31,7 +31,7 @@ runcmd:
 """
 
 
-def get_cloud_init_template(custom_template: str = None, public_key: str = None, swap_size: int = 2) -> str:
+def get_cloud_init_template(custom_template: str = None, public_key: str = None, swap_size: int = 2, username: str = None) -> str:
     """
     Get cloud-init template with placeholders replaced.
     
@@ -39,18 +39,20 @@ def get_cloud_init_template(custom_template: str = None, public_key: str = None,
         custom_template: Custom template from database. If None, uses default template.
         public_key: SSH public key to use. If None, uses value from settings.
         swap_size: Swap size in GiB. Default is 2.
+        username: Username for the VM. If None, uses value from settings.
     
     Returns:
         Cloud-init template with username, public key, and swap size replaced
     """
     template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE
     
-    # Use provided public key or fallback to settings
+    # Use provided values or fallback to settings
     ssh_public_key = public_key if public_key else settings.ED25519_PUBLIC_KEY
+    vm_username = username if username else settings.DEFAULT_USERNAME
     
-    # Replace placeholders with values from settings
+    # Replace placeholders with values
     return template.format(
-        username=settings.DEFAULT_USERNAME,
+        username=vm_username,
         public_key=ssh_public_key,
         swap_size=swap_size
     )

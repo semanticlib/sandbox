@@ -28,6 +28,7 @@ class VMDefaultSettings(Base):
     __tablename__ = "vm_default_settings"
 
     id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, default="ubuntu")
     cpu = Column(Integer, default=2)
     memory = Column(Integer, default=4)
     disk = Column(Integer, default=20)

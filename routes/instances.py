@@ -209,8 +209,9 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
     import io
     from fastapi.responses import StreamingResponse
     from services.ssh_key_service import get_instance_keys
-    from services.ssh_config_service import create_ssh_config_files
+    from services.ssh_config_service import create_ssh_config_files, DEFAULT_SSH_CONFIG_TEMPLATE, DEFAULT_INSTRUCTIONS_TEMPLATE
     from services.jump_user_service import create_jump_user
+    from core.models import ConnectionTemplate
     
     # Get SSH keys
     keys = get_instance_keys(instance_name)
@@ -223,6 +224,11 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
     # Get VM settings for username
     vm_settings = db.query(VMDefaultSettings).first()
     username = vm_settings.username if vm_settings else "ubuntu"
+    
+    # Get connection templates from DB
+    templates = db.query(ConnectionTemplate).first()
+    ssh_template = templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
+    instructions_template = templates.instructions_template if templates and templates.instructions_template else DEFAULT_INSTRUCTIONS_TEMPLATE
     
     # Create/update jump user on host system
     jump_user_result = create_jump_user(username, keys["public_key"])
@@ -256,8 +262,8 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
         except Exception:
             pass
     
-    # Generate SSH config files
-    create_ssh_config_files(instance_name, keys, username, vm_ip)
+    # Generate SSH config files with templates
+    create_ssh_config_files(instance_name, keys, username, vm_ip, ssh_template, instructions_template)
     
     # Create zip file in memory
     zip_buffer = io.BytesIO()

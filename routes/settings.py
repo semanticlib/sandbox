@@ -57,23 +57,29 @@ async def settings_page(
     password_success: str = None,
     password_error: str = None,
     vm_success: str = None,
-    vm_error: str = None
+    vm_error: str = None,
+    templates_success: str = None
 ):
     """Settings page - change password, LXD configuration, and VM defaults"""
+    from core.models import ConnectionTemplate
+    
     lxd_settings = db.query(LXDSettings).first()
     vm_settings = db.query(VMDefaultSettings).first()
+    connection_templates = db.query(ConnectionTemplate).first()
 
     return templates.TemplateResponse("admin/settings.html", {
         "request": request,
         "username": user.username,
         "lxd_settings": lxd_settings,
         "vm_settings": vm_settings,
+        "connection_templates": connection_templates,
         "lxd_success": lxd_success,
         "lxd_error": lxd_error,
         "password_success": password_success,
         "password_error": password_error,
         "vm_success": vm_success,
-        "vm_error": vm_error
+        "vm_error": vm_error,
+        "templates_success": templates_success
     })
 
 
@@ -87,12 +93,15 @@ async def change_password(
     user: AdminUser = Depends(require_auth)
 ):
     """Handle password change"""
+    from core.models import ConnectionTemplate
+    
     if len(new_password) < 6:
         return templates.TemplateResponse("admin/settings.html", {
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
             "vm_settings": db.query(VMDefaultSettings).first(),
+            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "New password must be at least 6 characters"
         })
 
@@ -102,6 +111,7 @@ async def change_password(
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
             "vm_settings": db.query(VMDefaultSettings).first(),
+            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "New passwords do not match"
         })
 
@@ -111,6 +121,7 @@ async def change_password(
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
             "vm_settings": db.query(VMDefaultSettings).first(),
+            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "Current password is incorrect"
         })
 
@@ -297,3 +308,45 @@ async def get_available_images(db: Session = Depends(get_db)):
             "success": False,
             "message": str(e)
         })
+
+
+@router.get("/settings/connection-templates")
+async def get_connection_templates(db: Session = Depends(get_db)):
+    """Get connection templates (SSH config and instructions)"""
+    from core.models import ConnectionTemplate
+    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE, DEFAULT_INSTRUCTIONS_TEMPLATE
+    
+    templates = db.query(ConnectionTemplate).first()
+    
+    return JSONResponse({
+        "success": True,
+        "ssh_config_template": templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE,
+        "instructions_template": templates.instructions_template if templates and templates.instructions_template else DEFAULT_INSTRUCTIONS_TEMPLATE
+    })
+
+
+@router.post("/settings/connection-templates")
+async def save_connection_templates(
+    request: Request,
+    ssh_config_template: str = Form(...),
+    instructions_template: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Save connection templates"""
+    from core.models import ConnectionTemplate
+    
+    templates = db.query(ConnectionTemplate).first()
+    
+    if templates:
+        templates.ssh_config_template = ssh_config_template
+        templates.instructions_template = instructions_template
+    else:
+        templates = ConnectionTemplate(
+            ssh_config_template=ssh_config_template,
+            instructions_template=instructions_template
+        )
+        db.add(templates)
+    
+    db.commit()
+    
+    return RedirectResponse(url="/settings?templates_success=Connection templates saved successfully", status_code=303)

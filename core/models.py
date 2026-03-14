@@ -37,3 +37,11 @@ class VMDefaultSettings(Base):
     image_alias = Column(String, nullable=True)  # Image alias (e.g., "ubuntu/24.04")
     image_description = Column(String, nullable=True)  # Human-readable description
     cloud_init = Column(Text, nullable=True)
+
+
+class ConnectionTemplate(Base):
+    __tablename__ = "connection_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ssh_config_template = Column(Text, nullable=True)  # SSH config template with placeholders
+    instructions_template = Column(Text, nullable=True)  # Instructions template with placeholders

@@ -203,8 +203,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordError = document.getElementById('password-error')?.value || '';
     const vmSuccess = document.getElementById('vm-success')?.value || '';
     const vmError = document.getElementById('vm-error')?.value || '';
+    const templatesSuccess = document.getElementById('templates-success')?.value || '';
+    const templatesError = document.getElementById('templates-error')?.value || '';
 
-    if (vmSuccess || vmError) {
+    if (templatesSuccess || templatesError) {
+        const templatesTab = new bootstrap.Tab(document.getElementById('connection-templates-tab'));
+        templatesTab.show();
+    } else if (vmSuccess || vmError) {
         const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
         vmTab.show();
         // Load images when VM tab is shown

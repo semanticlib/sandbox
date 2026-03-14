@@ -92,6 +92,28 @@ class LXDService:
                 if root_device and 'size' in root_device:
                     disk = root_device['size']
 
+                # Get IP address from instance state (for running instances)
+                ip_address = 'N/A'
+                if inst.status == 'Running':
+                    try:
+                        # Call state() as a method - returns InstanceState object
+                        state = inst.state()
+                        # Access network as an attribute (not dict key)
+                        network = state.network
+                        if network:
+                            # Look for any interface with IPv4 address
+                            for iface_name, iface_data in network.items():
+                                # Get addresses for this interface
+                                addresses = iface_data.get('addresses', [])
+                                for addr in addresses:
+                                    if addr.get('family') == 'inet':
+                                        ip_address = addr.get('address', 'N/A')
+                                        break
+                                if ip_address != 'N/A':
+                                    break
+                    except Exception:
+                        pass
+
                 instances.append({
                     'name': inst.name,
                     'status': inst.status,
@@ -99,6 +121,7 @@ class LXDService:
                     'cpu': cpu,
                     'memory': memory,
                     'disk': disk,
+                    'ip': ip_address,
                 })
             except Exception:
                 instances.append({
@@ -108,6 +131,7 @@ class LXDService:
                     'cpu': 'N/A',
                     'memory': 'N/A',
                     'disk': 'N/A',
+                    'ip': 'N/A',
                 })
 
         return instances

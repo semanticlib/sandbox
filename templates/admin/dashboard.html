@@ -189,6 +189,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Type</th>
+                        <th>IP Address</th>
                         <th>Status</th>
                         <th>CPU</th>
                         <th>Memory</th>
@@ -201,6 +202,13 @@
                     <tr>
                         <td><strong>{{ instance.name }}</strong></td>
                         <td>{{ instance.type }}</td>
+                        <td>
+                            {% if instance.ip == 'N/A' %}
+                            <span class="text-muted">N/A</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ instance.ip }}</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if instance.status == 'Running' %}
                             <span class="badge bg-success">Running</span>

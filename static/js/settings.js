@@ -118,9 +118,6 @@ packages:
   - zip
   - plocate
 
-# Set hostname
-hostname: VM_HOSTNAME
-
 # Add swap file
 runcmd:
   - [ fallocate, -l, 2G, /swapfile ]

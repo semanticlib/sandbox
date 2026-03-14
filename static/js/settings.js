@@ -103,11 +103,11 @@ function loadCloudInitTemplate() {
     const template = `#cloud-config
 # Default user configuration
 users:
-  - name: ubuntu
+  - name: DEFAULT_USERNAME
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     ssh_authorized_keys:
-      - ssh-rsa YOUR_PUBLIC_KEY_HERE
+      - ssh-ed25519 ED25519_PUBLIC_KEY
 
 # Update packages on first boot
 package_update: true
@@ -115,23 +115,19 @@ package_upgrade: false
 
 # Install additional packages
 packages:
-  - vim
-  - curl
-  - wget
+  - zip
+  - plocate
 
 # Set hostname
-hostname: my-vm
+hostname: VM_HOSTNAME
 
-# Write files to the system
-write_files:
-  - path: /etc/motd
-    content: |
-      Welcome to this VM!
-      Configured by cloud-init.
-
-# Run commands on first boot
+# Add swap file
 runcmd:
-  - echo "Cloud-init completed successfully" >> /var/log/cloud-init-custom.log
+  - [ fallocate, -l, 2G, /swapfile ]
+  - [ chmod, 600, /swapfile ]
+  - [ mkswap, /swapfile ]
+  - [ swapon, /swapfile ]
+  - [ sed, -i, '$a/swapfile none swap sw 0 0', /etc/fstab ]
 `;
     cloudInitField.value = template;
 }

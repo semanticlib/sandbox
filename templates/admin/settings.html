@@ -183,7 +183,9 @@
                                 </label>
                                 <textarea class="form-control font-monospace" id="cloud_init" name="cloud_init" rows="10"
                                           placeholder="#cloud-config&#10;users:&#10;  - name: ubuntu&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else '' }}</textarea>
-                                <small class="text-muted">Optional <a href="https://cloud-init.io" target="_blank">cloud-init</a> user-data configuration for VM customization</small>
+                                <small class="text-muted"><a href="https://cloud-init.io" target="_blank">Cloud-init</a> configuration template for VM preparation.</small>
+                                <br><small class="text-muted text-danger">Do not remove: DEFAULT_USERNAME, VM_HOSTNAME, ED25519_PUBLIC_KEY</small>
+                                <br><small class="text-muted text-danger">Update DEFAULT_USERNAME in the .env file</small>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Save VM Defaults

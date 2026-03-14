@@ -148,11 +148,17 @@ async def delete_instance(
     db: Session = Depends(get_db)
 ):
     """Delete an LXD instance and its SSH keys"""
+    from services.jump_user_service import delete_jump_user
+    
     lxd_service = LXDService(db)
     lxd_service.get_client()
 
     if not lxd_service.is_connected():
         return JSONResponse({"success": False, "message": "LXD not configured"})
+
+    # Get VM settings for username (to delete jump user)
+    vm_settings = db.query(VMDefaultSettings).first()
+    username = vm_settings.username if vm_settings else "ubuntu"
 
     # Delete the LXD instance
     result = lxd_service.delete_instance(instance_name)
@@ -166,6 +172,12 @@ async def delete_instance(
                 result["message"] = f"Instance '{instance_name}' and SSH keys deleted successfully"
             except Exception as e:
                 result["message"] = f"Instance deleted, but failed to remove SSH keys: {e}"
+        
+        # Delete jump user from host system
+        try:
+            delete_jump_user(username)
+        except Exception:
+            pass  # Don't fail deletion if jump user cleanup fails
 
     return JSONResponse(result)
 
@@ -198,6 +210,7 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
     from fastapi.responses import StreamingResponse
     from services.ssh_key_service import get_instance_keys
     from services.ssh_config_service import create_ssh_config_files
+    from services.jump_user_service import create_jump_user
     
     # Get SSH keys
     keys = get_instance_keys(instance_name)
@@ -210,6 +223,14 @@ async def download_ssh_config(instance_name: str, db: Session = Depends(get_db))
     # Get VM settings for username
     vm_settings = db.query(VMDefaultSettings).first()
     username = vm_settings.username if vm_settings else "ubuntu"
+    
+    # Create/update jump user on host system
+    jump_user_result = create_jump_user(username, keys["public_key"])
+    if not jump_user_result.get("success"):
+        return JSONResponse({
+            "success": False,
+            "message": f"Failed to setup jump user: {jump_user_result.get('message')}"
+        })
     
     # Get VM IP address
     from services.lxd_service import LXDService

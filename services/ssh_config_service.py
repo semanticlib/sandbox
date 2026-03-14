@@ -72,7 +72,7 @@ Host {vm_name}
         f.write(ssh_config_content)
     
     # Create instructions file
-    vm_ip_note = f"IP Address: {vm_ip}" if vm_ip else "Note: VM IP address was not available. Check your LXD network."
+    vm_ip_note = f"IP Address: {vm_ip}" if vm_ip else "Note: VM IP address was not available. Check with admin."
     instructions_content = f"""Welcome to the Workshop!
 
 Your personal environment is ready.
@@ -82,34 +82,46 @@ You can connect to your instance using a standard SSH client with the provided k
 
 {vm_ip_note}
 
+== Setup Instructions ==
+
 1. Save your private key
    Save your private key ({private_key_filename}) to your ~/.ssh/ directory.
    
    Examples:
    - Linux/Mac:  /home/{username}/.ssh/ or ~/.ssh/
    - Windows:    C:\\Users\\YourUsername\\.ssh\\
+   
+   Set proper permissions:
+   chmod 600 ~/.ssh/{private_key_filename}
 
 2. Add SSH config to your ~/.ssh/config file
    Copy the contents of the 'ssh-config' file (in this folder) and append it to:
    ~/.ssh/config
    
-3. Make sure the files have proper permissions:
-   chmod 600 ~/.ssh/*
+   Or run this command:
+   cat ssh-config >> ~/.ssh/config
+   
+   Make sure the config file has proper permissions:
+   chmod 600 ~/.ssh/config
 
-4. Connect to your VM by running this command in your terminal:
+3. Connect to your VM by running this command in your terminal:
    ssh {vm_name}
+
+== How It Works ==
+The SSH connection uses a jump host (the VM host machine) to reach the VM:
+  Your Computer → jump-host ({username}@host-ip) → {vm_name} ({username}@vm-ip)
+
+A jump user '{username}' has been automatically created on the host system for this purpose.
 
 == Troubleshooting ==
 - If you get permission denied errors, make sure the private key has correct permissions:
   chmod 600 ~/.ssh/{private_key_filename}
 
-- Try connecting directly to the host server:
-  ssh jump-host
-
 == Security Notes ==
 - Never share your private key with anyone
 - Keep your private key permissions restricted (chmod 600)
 - The private key is only stored locally on this machine
+- The jump user has no login shell (nologin) in the host system for security
 """
     
     instructions_path = os.path.join(instance_dir, "instructions.txt")

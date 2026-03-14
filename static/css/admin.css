@@ -36,6 +36,26 @@ body {
     margin-right: 10px;
 }
 
+/* Dark mode sidebar */
+body.dark-mode .sidebar {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-right: 1px solid rgba(255,255,255,0.1);
+}
+
+body.dark-mode .sidebar .brand {
+    color: #eaeaea;
+}
+
+body.dark-mode .sidebar a {
+    color: rgba(255,255,255,0.7);
+}
+
+body.dark-mode .sidebar a:hover,
+body.dark-mode .sidebar a.active {
+    background: rgba(255,255,255,0.1);
+    color: #eaeaea;
+}
+
 .main-content {
     padding: 30px;
 }

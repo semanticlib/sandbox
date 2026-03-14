@@ -10,7 +10,7 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     ssh_authorized_keys:
-      - ssh-ed25519 {public_key}
+      - {public_key}
 
 # Update packages on first boot
 package_update: true

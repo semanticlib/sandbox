@@ -14,7 +14,6 @@ Host jump-host
     User {username}
     IdentityFile ~/.ssh/{private_key_filename}
     StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
 
 Host {vm_name}
     HostName {vm_hostname}
@@ -22,7 +21,6 @@ Host {vm_name}
     ProxyJump jump-host
     IdentityFile ~/.ssh/{private_key_filename}
     StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
 # --- End of config block ---
 """
 
@@ -49,11 +47,8 @@ You can connect to your instance using a standard SSH client with the provided k
    chmod 600 ~/.ssh/{private_key_filename}
 
 2. Add SSH config to your ~/.ssh/config file
-   Copy the contents of the 'ssh-config' file (in this folder) and append it to:
+   Copy the contents of the 'ssh-config' file and append it to:
    ~/.ssh/config
-   
-   Or run this command:
-   cat ssh-config >> ~/.ssh/config
    
    Make sure the config file has proper permissions:
    chmod 600 ~/.ssh/config
@@ -66,22 +61,6 @@ The SSH connection uses a jump host (your host machine) to reach the VM:
   Your Computer → jump-host ({username}@host) → {vm_name} ({username}@vm-ip)
 
 A jump user '{username}' has been automatically created on the host system for this purpose.
-
-== Troubleshooting ==
-- If you get permission denied errors, make sure the private key has correct permissions:
-  chmod 600 ~/.ssh/{private_key_filename}
-
-- If ProxyJump fails, try connecting directly:
-  ssh -o ProxyCommand=none {username}@{vm_hostname}
-
-- If jump-host connection fails, verify the user exists:
-  id {username}
-
-== Files in this folder ==
-- id_ed25519      : Your private SSH key (keep this secure!)
-- id_ed25519.pub  : Your public SSH key
-- ssh-config      : SSH configuration snippet
-- instructions.txt: This file
 
 == Security Notes ==
 - Never share your private key with anyone

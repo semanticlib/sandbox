@@ -20,6 +20,10 @@ class Settings:
     # App Settings
     APP_TITLE: str = os.getenv("APP_TITLE", "Sandbox Manager")
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    
+    # VM Settings
+    DEFAULT_USERNAME: str = os.getenv("DEFAULT_USERNAME", "ubuntu")
+    ED25519_PUBLIC_KEY: str = os.getenv("ED25519_PUBLIC_KEY", "")
 
 
 # Global settings instance

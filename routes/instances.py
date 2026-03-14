@@ -8,6 +8,7 @@ from core.database import get_db
 from core.models import AdminUser, LXDSettings, VMDefaultSettings
 from services.lxd_service import LXDService
 from services.instance_tasks import InstanceTaskService, creation_tasks
+from services.cloud_init_service import get_cloud_init_template
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 
@@ -45,7 +46,10 @@ async def create_instance(
 
         # Get VM default settings for cloud-init
         vm_settings = db.query(VMDefaultSettings).first()
-        cloud_init = vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else None
+        cloud_init_template = vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else None
+        
+        # Process cloud-init template (replace placeholders with values from .env)
+        cloud_init = get_cloud_init_template(cloud_init_template) if cloud_init_template else None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,

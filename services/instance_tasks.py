@@ -4,6 +4,8 @@ import time
 import uuid
 from typing import Dict, Any, Optional
 
+from services.cloud_init_service import get_cloud_init_template
+
 
 # In-memory task tracking
 creation_tasks: Dict[str, Dict[str, Any]] = {}
@@ -123,6 +125,11 @@ class InstanceTaskService:
                         "limits.cpu": str(cpu),
                         "limits.memory": f"{ram}GiB",
                     }
+                    
+                    # Add cloud-init user-data if provided
+                    if cloud_init:
+                        vm_config["user.user-data"] = cloud_init
+                    
                     vm_devices = {
                         "root": {
                             "type": "disk",
@@ -166,6 +173,11 @@ class InstanceTaskService:
                         "limits.cpu": str(cpu),
                         "limits.memory": f"{ram}GiB",
                     }
+                    
+                    # Add cloud-init user-data if provided
+                    if cloud_init:
+                        container_config["user.user-data"] = cloud_init
+                    
                     container_devices = {
                         "root": {
                             "type": "disk",

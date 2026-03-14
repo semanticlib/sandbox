@@ -103,11 +103,11 @@ function loadCloudInitTemplate() {
     const template = `#cloud-config
 # Default user configuration
 users:
-  - name: DEFAULT_USERNAME
+  - name: {username}
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     ssh_authorized_keys:
-      - ssh-ed25519 ED25519_PUBLIC_KEY
+      - ssh-ed25519 {public_key}
 
 # Update packages on first boot
 package_update: true

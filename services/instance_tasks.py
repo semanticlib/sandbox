@@ -5,6 +5,7 @@ import uuid
 from typing import Dict, Any, Optional
 
 from services.cloud_init_service import get_cloud_init_template
+from services.ssh_key_service import generate_and_save_keys
 
 
 # In-memory task tracking
@@ -83,6 +84,17 @@ class InstanceTaskService:
             creation_tasks[task_id]["progress"] = 25
             creation_tasks[task_id]["message"] = "Preparing instance configuration..."
 
+            # Generate SSH key pair for this VM (only for VMs, not containers)
+            ssh_keys = None
+            if instance_type == "virtual-machine":
+                try:
+                    creation_tasks[task_id]["message"] = "Generating SSH key pair..."
+                    ssh_keys = generate_and_save_keys(name)
+                    creation_tasks[task_id]["progress"] = 30
+                except Exception as e:
+                    # Continue without SSH keys if generation fails
+                    creation_tasks[task_id]["message"] = "Warning: SSH key generation failed, continuing..."
+
             creation_tasks[task_id]["progress"] = 40
             creation_tasks[task_id]["message"] = "Getting Ubuntu image..."
 
@@ -125,10 +137,14 @@ class InstanceTaskService:
                         "limits.cpu": str(cpu),
                         "limits.memory": f"{ram}GiB",
                     }
-                    
+
                     # Add cloud-init user-data if provided
                     if cloud_init:
-                        vm_config["user.user-data"] = cloud_init
+                        # Use generated SSH public key if available, otherwise use template as-is
+                        if ssh_keys and ssh_keys.get("public_key"):
+                            vm_config["user.user-data"] = get_cloud_init_template(cloud_init, ssh_keys["public_key"])
+                        else:
+                            vm_config["user.user-data"] = cloud_init
                     
                     vm_devices = {
                         "root": {
@@ -173,11 +189,15 @@ class InstanceTaskService:
                         "limits.cpu": str(cpu),
                         "limits.memory": f"{ram}GiB",
                     }
-                    
+
                     # Add cloud-init user-data if provided
                     if cloud_init:
-                        container_config["user.user-data"] = cloud_init
-                    
+                        # Use generated SSH public key if available, otherwise use template as-is
+                        if ssh_keys and ssh_keys.get("public_key"):
+                            container_config["user.user-data"] = get_cloud_init_template(cloud_init, ssh_keys["public_key"])
+                        else:
+                            container_config["user.user-data"] = cloud_init
+
                     container_devices = {
                         "root": {
                             "type": "disk",

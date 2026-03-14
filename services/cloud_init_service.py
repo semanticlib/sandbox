@@ -31,22 +31,26 @@ runcmd:
 """
 
 
-def get_cloud_init_template(custom_template: str = None) -> str:
+def get_cloud_init_template(custom_template: str = None, public_key: str = None) -> str:
     """
     Get cloud-init template with placeholders replaced.
     
     Args:
         custom_template: Custom template from database. If None, uses default template.
+        public_key: SSH public key to use. If None, uses value from settings.
     
     Returns:
         Cloud-init template with username and public key replaced
     """
     template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE
     
+    # Use provided public key or fallback to settings
+    ssh_public_key = public_key if public_key else settings.ED25519_PUBLIC_KEY
+    
     # Replace placeholders with values from settings
     return template.format(
         username=settings.DEFAULT_USERNAME,
-        public_key=settings.ED25519_PUBLIC_KEY
+        public_key=ssh_public_key
     )
 
 

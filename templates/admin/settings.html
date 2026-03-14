@@ -135,7 +135,7 @@
     <!-- VM Settings Tab -->
     <div class="tab-pane fade" id="vm-settings" role="tabpanel">
         <div class="row">
-            <div class="col-md-8">
+            <div class="col-md-9">
                 <div class="card mb-4">
                     <div class="card-header">
                         <i class="bi bi-pc-display"></i> Default VM Configuration
@@ -154,53 +154,69 @@
                         {% endif %}
 
                         <form method="post" action="/settings/vm">
-                            <div class="mb-5 row">
-                                <div class="col">
-                                    <label for="default_username" class="form-label">Default Username</label>
-                                    <input type="text" class="form-control" id="default_username" name="username"
-                                           value="{{ vm_settings.username if vm_settings and vm_settings.username else 'ubuntu' }}"
-                                           required>
+                            <div class="row justify-content-between">
+                                <!-- Left Column: VM Defaults -->
+                                <div class="col-md-3">
+                                    <h6 class="mb-3"><i class="bi bi-sliders"></i> Default VM Configuration</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="default_username" class="form-label">Default Username</label>
+                                        <input type="text" class="form-control" id="default_username" name="username"
+                                               value="{{ vm_settings.username if vm_settings and vm_settings.username else 'ubuntu' }}"
+                                               required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="default_cpu" class="form-label">CPU Cores</label>
+                                        <input type="number" class="form-control" id="default_cpu" name="cpu"
+                                               value="{{ vm_settings.cpu if vm_settings else 2 }}"
+                                               min="1" max="32" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="default_memory" class="form-label">Memory (GiB)</label>
+                                        <input type="number" class="form-control" id="default_memory" name="memory"
+                                               value="{{ vm_settings.memory if vm_settings else 4 }}"
+                                               min="1" max="128" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="default_disk" class="form-label">Disk Size (GiB)</label>
+                                        <input type="number" class="form-control" id="default_disk" name="disk"
+                                               value="{{ vm_settings.disk if vm_settings else 20 }}"
+                                               min="5" max="500" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="default_swap" class="form-label">Swap (GiB)</label>
+                                        <input type="number" class="form-control" id="default_swap" name="swap"
+                                               value="{{ vm_settings.swap if vm_settings and vm_settings.swap else 2 }}"
+                                               min="0" max="32" required>
+                                    </div>
                                 </div>
-                                <div class="col">
-                                    <label for="default_cpu" class="form-label">Default CPU Cores</label>
-                                    <input type="number" class="form-control" id="default_cpu" name="cpu"
-                                           value="{{ vm_settings.cpu if vm_settings else 2 }}"
-                                           min="1" max="32" required>
-                                </div>
-                                <div class="col">
-                                    <label for="default_memory" class="form-label">Default Memory (GiB)</label>
-                                    <input type="number" class="form-control" id="default_memory" name="memory"
-                                           value="{{ vm_settings.memory if vm_settings else 4 }}"
-                                           min="1" max="128" required>
-                                </div>
-                                <div class="col">
-                                    <label for="default_disk" class="form-label">Default Disk Size (GiB)</label>
-                                    <input type="number" class="form-control" id="default_disk" name="disk"
-                                           value="{{ vm_settings.disk if vm_settings else 20 }}"
-                                           min="5" max="500" required>
-                                </div>
-                                <div class="col">
-                                    <label for="default_swap" class="form-label">Default Swap (GiB)</label>
-                                    <input type="number" class="form-control" id="default_swap" name="swap"
-                                           value="{{ vm_settings.swap if vm_settings and vm_settings.swap else 2 }}"
-                                           min="0" max="32" required>
+                                
+                                <!-- Right Column: Cloud-init Template -->
+                                <div class="col-md-7">
+                                    <h6 class="mb-3"><i class="bi bi-file-earmark-code"></i> Cloud-init Template</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="cloud_init" class="form-label d-flex justify-content-between align-items-center">
+                                            <span>Configuration (YAML)</span>
+                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="loadCloudInitTemplate()">
+                                                <i class="bi bi-file-earmark-code"></i> Load Template
+                                            </button>
+                                        </label>
+                                        <textarea class="form-control font-monospace" id="cloud_init" name="cloud_init" rows="14"
+                                                  placeholder="#cloud-config&#10;users:&#10;  - name: ubuntu&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else '' }}</textarea>
+                                        <small class="text-muted"><a href="https://cloud-init.io" target="_blank">Cloud-init</a> configuration template for VM preparation.</small>
+                                        <div class="alert alert-info mt-3">
+                                            <i class="bi bi-info-circle"></i>
+                                            <strong>Note:</strong> The {username}, {public_key}, and {swap_size} are updated automatically from the values saved in the database.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="cloud_init" class="form-label d-flex justify-content-between align-items-center">
-                                    <span>Cloud-init Configuration (YAML)</span>
-                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadCloudInitTemplate()">
-                                        <i class="bi bi-file-earmark-code"></i> Load Template
-                                    </button>
-                                </label>
-                                <textarea class="form-control font-monospace" id="cloud_init" name="cloud_init" rows="10"
-                                          placeholder="#cloud-config&#10;users:&#10;  - name: ubuntu&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else '' }}</textarea>
-                                <small class="text-muted"><a href="https://cloud-init.io" target="_blank">Cloud-init</a> configuration template for VM preparation.</small>
-                                <div class="alert alert-info mt-3">
-                                    <i class="bi bi-info-circle"></i>
-                                    <strong>Note:</strong> The {username}, {public_key}, and {swap_size} are updated automatically from the values saved in the database.
-                                </div>
-                            </div>
+                            
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Save VM Defaults
                             </button>

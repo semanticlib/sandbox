@@ -1,0 +1,27 @@
+[Unit]
+Description=Sandbox Manager - LXD VM Management Interface
+After=network.target lxd.service
+Wants=lxd.service
+
+[Service]
+Type=exec
+User=sandbox
+Group=sandbox
+WorkingDirectory=/opt/sandbox
+Environment="PATH=/opt/sandbox/.venv/bin"
+ExecStart=/opt/sandbox/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/sandbox/_instances /opt/sandbox/static
+
+# Environment file (contains SECRET_KEY and other settings)
+EnvironmentFile=/etc/sandbox/.env
+
+[Install]
+WantedBy=multi-user.target

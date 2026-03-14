@@ -47,8 +47,8 @@ def get_cloud_init_template(custom_template: str = None, public_key: str = None,
     template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE
     
     # Use provided values or fallback to settings
-    ssh_public_key = public_key if public_key else settings.ED25519_PUBLIC_KEY
-    vm_username = username if username else settings.DEFAULT_USERNAME
+    ssh_public_key = public_key if public_key else ''
+    vm_username = username if username else 'ubuntu'
     
     # Replace placeholders with values
     return template.format(

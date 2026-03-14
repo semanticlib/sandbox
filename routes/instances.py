@@ -188,3 +188,70 @@ async def get_instance_ssh_keys(instance_name: str):
         "private_key": keys["private_key"],
         "public_key": keys["public_key"]
     })
+
+
+@router.get("/{instance_name}/download-ssh-config")
+async def download_ssh_config(instance_name: str, db: Session = Depends(get_db)):
+    """Generate and download SSH config files as a zip"""
+    import zipfile
+    import io
+    from fastapi.responses import StreamingResponse
+    from services.ssh_key_service import get_instance_keys
+    from services.ssh_config_service import create_ssh_config_files
+    
+    # Get SSH keys
+    keys = get_instance_keys(instance_name)
+    if not keys:
+        return JSONResponse({
+            "success": False,
+            "message": "SSH keys not found for this instance"
+        })
+    
+    # Get VM settings for username
+    vm_settings = db.query(VMDefaultSettings).first()
+    username = vm_settings.username if vm_settings else "ubuntu"
+    
+    # Get VM IP address
+    from services.lxd_service import LXDService
+    lxd_service = LXDService(db)
+    lxd_service.get_client()
+    vm_ip = None
+    
+    if lxd_service.is_connected():
+        try:
+            instance = lxd_service.client.instances.get(instance_name)
+            if instance.status == "Running":
+                state = instance.state()
+                network = state.network
+                if network:
+                    for iface_name, iface_data in network.items():
+                        addresses = iface_data.get('addresses', [])
+                        for addr in addresses:
+                            if addr.get('family') == 'inet':
+                                vm_ip = addr.get('address')
+                                break
+                        if vm_ip:
+                            break
+        except Exception:
+            pass
+    
+    # Generate SSH config files
+    create_ssh_config_files(instance_name, keys, username, vm_ip)
+    
+    # Create zip file in memory
+    zip_buffer = io.BytesIO()
+    instance_dir = os.path.join("_instances", instance_name)
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for filename in ['id_ed25519', 'id_ed25519.pub', 'ssh-config', 'instructions.txt']:
+            filepath = os.path.join(instance_dir, filename)
+            if os.path.exists(filepath):
+                zip_file.write(filepath, filename)
+    
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={instance_name}-ssh-config.zip"}
+    )

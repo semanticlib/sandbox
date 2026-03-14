@@ -195,6 +195,7 @@
                         <th>Memory</th>
                         <th>Disk</th>
                         <th>Actions</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -263,6 +264,17 @@
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </div>
+                        </td>
+                        <td>
+                            {% set disabled = instance.ip == 'N/A' %}
+
+                            <span {% if disabled %}title="IP not available - start the VM first"{% endif %}>
+                                <a {% if not disabled %}href="/instances/{{ instance.name }}/download-ssh-config"{% endif %} 
+                                role="button" 
+                                class="btn btn-sm btn-outline-success {% if disabled %}disabled{% endif %}" {% if disabled %}aria-disabled="true"{% else %}title="Download SSH config"{% endif %}>
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </span>
                         </td>
                     </tr>
                     {% endfor %}

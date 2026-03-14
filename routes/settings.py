@@ -17,14 +17,14 @@ router = APIRouter(tags=["settings"])
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     """Get current logged-in user from session cookie"""
     from jose import JWTError, jwt
-    from core.security import SECRET_KEY, ALGORITHM
+    from core.config import settings
     
     token = request.cookies.get("access_token")
     if not token:
         return None
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             return None

@@ -5,11 +5,12 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import filters
 
 from core.database import engine, Base
+from core.config import settings
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Admin Panel")
+app = FastAPI(title=settings.APP_TITLE)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -62,7 +63,7 @@ async def general_exception_handler(request: Request, exc):
 
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
-from core.security import SECRET_KEY, ALGORITHM
+from core.config import settings
 
 
 def get_current_user(request: Request, db = Depends(get_db)):
@@ -72,7 +73,7 @@ def get_current_user(request: Request, db = Depends(get_db)):
         return None
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             return None

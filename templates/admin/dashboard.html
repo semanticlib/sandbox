@@ -124,18 +124,26 @@
                 <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
                     <i class="bi bi-plus-circle"></i> Bulk Create
                 </button>
+                <button type="button" class="btn btn-success me-2" onclick="bulkStartSelected()">
+                    <i class="bi bi-play-circle"></i> Start Selected
+                </button>
                 <button type="button" class="btn btn-warning me-2" onclick="bulkStopSelected()">
                     <i class="bi bi-stop-circle"></i> Stop Selected
                 </button>
                 <button type="button" class="btn btn-danger me-2" onclick="bulkDeleteSelected()">
                     <i class="bi bi-trash"></i> Delete Selected
                 </button>
-                <button type="button" class="btn btn-outline-danger" onclick="bulkStopAll()">
-                    <i class="bi bi-stop-fill"></i> Stop All Running
-                </button>
-                <button type="button" class="btn btn-outline-danger" onclick="bulkDeleteAll()">
-                    <i class="bi bi-trash-fill"></i> Delete All Stopped
-                </button>
+                <div class="btn-group ms-3">
+                    <button type="button" class="btn btn-outline-success" onclick="bulkStartAll()">
+                        <i class="bi bi-play-fill"></i> Start All
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" onclick="bulkStopAll()">
+                        <i class="bi bi-stop-fill"></i> Stop All
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="bulkDeleteAll()">
+                        <i class="bi bi-trash-fill"></i> Delete All
+                    </button>
+                </div>
             </div>
             <div class="col-md-4 text-end">
                 <span id="selected-count" class="badge bg-secondary">0 selected</span>

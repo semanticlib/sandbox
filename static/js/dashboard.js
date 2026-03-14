@@ -358,24 +358,24 @@ async function startBulkCreate() {
 
 async function pollBulkOperation() {
     if (!bulkOperationId) return;
-    
+
     try {
         const response = await fetch(`/instances/bulk/status/${bulkOperationId}`);
         const data = await response.json();
-        
+
         if (data.success) {
             const op = data.operation;
             const progressBar = document.getElementById('bulk-progress-bar');
             const progressMessage = document.getElementById('bulk-progress-message');
             const progressDetails = document.getElementById('bulk-progress-details');
-            
+
             progressBar.style.width = `${op.progress}%`;
             progressMessage.textContent = op.message;
             progressDetails.textContent = `Completed: ${op.completed}/${op.total} | Failed: ${op.failed}`;
-            
+
             if (op.done) {
                 clearInterval(bulkPollingInterval);
-                
+
                 if (op.error) {
                     progressBar.className = 'progress-bar bg-danger';
                     progressMessage.textContent = `Failed: ${op.error}`;
@@ -384,9 +384,17 @@ async function pollBulkOperation() {
                     progressMessage.textContent = 'Completed with errors';
                 } else {
                     progressBar.className = 'progress-bar bg-success';
-                    progressMessage.textContent = 'Bulk creation completed successfully!';
+                    // Dynamic success message based on operation type
+                    const typeLabels = {
+                        'bulk_create': 'Bulk creation',
+                        'bulk_start': 'Bulk start',
+                        'bulk_stop': 'Bulk stop',
+                        'bulk_delete': 'Bulk deletion'
+                    };
+                    const label = typeLabels[op.type] || 'Bulk operation';
+                    progressMessage.textContent = `${label} completed successfully!`;
                 }
-                
+
                 // Close modal after delay and reload
                 setTimeout(() => {
                     const progressModal = bootstrap.Modal.getInstance(document.getElementById('bulkProgressModal'));
@@ -401,6 +409,20 @@ async function pollBulkOperation() {
 }
 
 // Bulk Stop/Delete Functions
+async function bulkStartSelected() {
+    const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
+    const names = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (names.length === 0) {
+        alert('Please select at least one instance');
+        return;
+    }
+    
+    if (!confirm(`Start ${names.length} selected instance(s)?`)) return;
+    
+    await executeBulkOperation('start', names);
+}
+
 async function bulkStopSelected() {
     const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
     const names = Array.from(checkboxes).map(cb => cb.value);
@@ -418,15 +440,32 @@ async function bulkStopSelected() {
 async function bulkDeleteSelected() {
     const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
     const names = Array.from(checkboxes).map(cb => cb.value);
+    const statuses = Array.from(checkboxes).map(cb => cb.dataset.status);
     
     if (names.length === 0) {
         alert('Please select at least one instance');
         return;
     }
     
-    if (!confirm(`Delete ${names.length} selected instance(s)? This cannot be undone!`)) return;
+    // Check for running instances
+    const runningNames = names.filter((_, i) => statuses[i] === 'Running');
+    
+    if (runningNames.length > 0) {
+        const confirmMsg = `${runningNames.length} of the selected instance(s) are still running:\n${runningNames.join(', ')}\n\n` +
+                          `They will be stopped before deletion.\n\n` +
+                          `Do you want to proceed?`;
+        if (!confirm(confirmMsg)) return;
+    } else {
+        if (!confirm(`Delete ${names.length} selected instance(s)? This cannot be undone!`)) return;
+    }
     
     await executeBulkOperation('delete', names);
+}
+
+async function bulkStartAll() {
+    if (!confirm('Start ALL stopped instances?')) return;
+    
+    await executeBulkOperation('start', [], true);
 }
 
 async function bulkStopAll() {
@@ -446,9 +485,10 @@ async function executeBulkOperation(action, names, all = false) {
     progressModal.show();
     
     document.getElementById('bulk-progress-bar').style.width = '0%';
+    const actionText = action.charAt(0).toUpperCase() + action.slice(1);
     document.getElementById('bulk-progress-message').textContent = all ? 
-        `${action === 'stop' ? 'Stopping' : 'Deleting'} all instances...` :
-        `${action === 'stop' ? 'Stopping' : 'Deleting'} ${names.length} instances...`;
+        `${actionText}ing all instances...` :
+        `${actionText}ing ${names.length} instances...`;
     document.getElementById('bulk-progress-details').textContent = '';
     
     try {

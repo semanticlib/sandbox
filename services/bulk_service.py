@@ -462,14 +462,130 @@ class BulkOperationService:
     def start_bulk_stop(instance_names: List[str], db) -> str:
         """Start a bulk stop operation and return operation ID."""
         op_id = str(uuid.uuid4())
-        
+
         thread = threading.Thread(
             target=BulkOperationService.bulk_stop_instances,
             args=(op_id, instance_names, db)
         )
         thread.daemon = True
         thread.start()
-        
+
+        return op_id
+
+    @staticmethod
+    def bulk_start_instances(
+        op_id: str,
+        instance_names: List[str],
+        db
+    ):
+        """
+        Background task to start multiple instances.
+
+        Args:
+            op_id: Operation ID for tracking
+            instance_names: List of instance names to start
+            db: Database session
+        """
+        total = len(instance_names)
+        completed = 0
+        failed = 0
+        failed_names = []
+
+        bulk_operations[op_id] = {
+            "id": op_id,
+            "type": "bulk_start",
+            "total": total,
+            "completed": 0,
+            "failed": 0,
+            "progress": 0,
+            "status": "starting",
+            "message": f"Starting {total} instances...",
+            "done": False,
+            "error": None,
+            "created_at": datetime.utcnow().isoformat(),
+            "results": []
+        }
+
+        try:
+            lxd_service = LXDService(db)
+            lxd_service.get_client()
+
+            if not lxd_service.is_connected():
+                raise Exception("LXD not connected")
+
+            for i, name in enumerate(instance_names):
+                bulk_operations[op_id]["progress"] = int((i / total) * 100)
+
+                try:
+                    result = lxd_service.start_instance(name)
+                    if result.get("success"):
+                        completed += 1
+                        bulk_operations[op_id]["results"].append({
+                            "name": name,
+                            "success": True,
+                            "action": "started"
+                        })
+                    else:
+                        failed += 1
+                        failed_names.append(name)
+                        bulk_operations[op_id]["results"].append({
+                            "name": name,
+                            "success": False,
+                            "error": result.get("message")
+                        })
+                except Exception as e:
+                    failed += 1
+                    failed_names.append(name)
+                    bulk_operations[op_id]["results"].append({
+                        "name": name,
+                        "success": False,
+                        "error": str(e)
+                    })
+
+                bulk_operations[op_id]["completed"] = completed
+                bulk_operations[op_id]["failed"] = failed
+
+            # Final status
+            bulk_operations[op_id]["progress"] = 100
+            bulk_operations[op_id]["done"] = True
+
+            if failed > 0:
+                bulk_operations[op_id]["status"] = "completed_with_errors"
+                bulk_operations[op_id]["message"] = (
+                    f"Started {completed}/{total} instances. "
+                    f"{failed} failed: {', '.join(failed_names)}"
+                )
+            else:
+                bulk_operations[op_id]["status"] = "completed"
+                bulk_operations[op_id]["message"] = f"Successfully started {total} instances"
+
+        except Exception as e:
+            bulk_operations[op_id]["done"] = True
+            bulk_operations[op_id]["error"] = str(e)
+            bulk_operations[op_id]["status"] = "failed"
+            bulk_operations[op_id]["message"] = f"Bulk start failed: {str(e)}"
+
+        # Schedule cleanup
+        def cleanup():
+            time.sleep(300)
+            BulkOperationService.cleanup_operation(op_id)
+
+        cleanup_thread = threading.Thread(target=cleanup)
+        cleanup_thread.daemon = True
+        cleanup_thread.start()
+
+    @staticmethod
+    def start_bulk_start(instance_names: List[str], db) -> str:
+        """Start a bulk start operation and return operation ID."""
+        op_id = str(uuid.uuid4())
+
+        thread = threading.Thread(
+            target=BulkOperationService.bulk_start_instances,
+            args=(op_id, instance_names, db)
+        )
+        thread.daemon = True
+        thread.start()
+
         return op_id
 
     @staticmethod

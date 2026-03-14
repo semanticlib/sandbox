@@ -1,32 +1,46 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/admin.css?v=6">
+<link rel="stylesheet" href="/static/css/admin.css?v=7">
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-2 sidebar">
-            <span class="brand"><i class="bi bi-box-seam"></i> {{ app_title }}</span>
-            <a href="/" class="{% block nav_dashboard %}{% endblock %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
-            <a href="/settings" class="{% block nav_settings %}{% endblock %}"><i class="bi bi-gear"></i> Settings</a>
-            <a href="/logout" class="mt-4"><i class="bi bi-box-arrow-right"></i> Logout</a>
-        </div>
-        <div class="col-md-10 main-content">
-            <nav class="navbar navbar-expand-lg mb-4 rounded">
-                <div class="container-fluid">
-                    <span class="navbar-text">
-                        {% block navbar %}
-                        Welcome, <strong>{{ username }}</strong>
-                        {% endblock %}
-                    </span>
-                    <button class="dark-mode-toggle ms-auto" onclick="toggleDarkMode()" title="Toggle Dark Mode">
-                        <i class="bi bi-moon-fill" id="dark-mode-icon"></i>
-                    </button>
-                </div>
-            </nav>
+        <!-- Sidebar -->
+        <div class="col-md-2 sidebar p-3 d-flex flex-column">
+            <span class="brand mb-3"><i class="bi bi-box-seam"></i> {{ app_title }}</span>
             
+            <!-- User Info -->
+            <div class="sidebar-user rounded-3 p-3 mb-3 d-flex align-items-center gap-2 text-white">
+                <i class="bi bi-person-circle fs-5"></i>
+                <span class="small">Welcome, <strong>{{ username }}</strong></span>
+            </div>
+            
+            <!-- Main Navigation -->
+            <div class="nav flex-column mb-auto">
+                <a href="/" class="nav-link {% block nav_dashboard %}{% endblock %}">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+                <a href="/settings" class="nav-link {% block nav_settings %}{% endblock %}">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+            </div>
+            
+            <!-- Bottom Section -->
+            <div class="border-top border-white border-opacity-25 pt-3">
+                <a href="/logout" class="nav-link">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+                <button class="nav-link border-0 w-100 text-start" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                    <i class="bi bi-moon-fill" id="dark-mode-icon"></i>
+                    <span>Dark Mode</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-md-10 main-content">
             {% block page_content %}{% endblock %}
         </div>
     </div>

@@ -169,6 +169,24 @@ async function loadImages() {
     }
 }
 
+// Load connection templates
+async function loadConnectionTemplates() {
+    const sshConfigField = document.getElementById('ssh_config_template');
+    const instructionsField = document.getElementById('instructions_template');
+    
+    try {
+        const response = await fetch('/settings/connection-templates');
+        const data = await response.json();
+        
+        if (data.success) {
+            sshConfigField.value = data.ssh_config_template;
+            instructionsField.value = data.instructions_template;
+        }
+    } catch (error) {
+        console.error('Failed to load connection templates:', error);
+    }
+}
+
 // Handle image selection
 function onImageSelect() {
     const select = document.getElementById('image_select');
@@ -209,6 +227,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (templatesSuccess || templatesError) {
         const templatesTab = new bootstrap.Tab(document.getElementById('connection-templates-tab'));
         templatesTab.show();
+        // Load templates when tab is shown
+        loadConnectionTemplates();
     } else if (vmSuccess || vmError) {
         const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
         vmTab.show();
@@ -217,5 +237,13 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (passwordSuccess || passwordError) {
         const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
         passwordTab.show();
+    }
+    
+    // Load connection templates when tab is clicked
+    const connectionTemplatesTab = document.getElementById('connection-templates-tab');
+    if (connectionTemplatesTab) {
+        connectionTemplatesTab.addEventListener('shown.bs.tab', function() {
+            loadConnectionTemplates();
+        });
     }
 });

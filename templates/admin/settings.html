@@ -284,21 +284,7 @@
                                     <h6 class="mb-3"><i class="bi bi-file-text"></i> SSH Config Template</h6>
                                     <div class="mb-3">
                                         <label for="ssh_config_template" class="form-label">SSH Config Template</label>
-                                        <textarea class="form-control font-monospace" id="ssh_config_template" name="ssh_config_template" rows="12"
-                                                  placeholder="# SSH config template with placeholders">{% if connection_templates %}{{ connection_templates.ssh_config_template }}{% else %}# --- Start of config block ---
-# SSH configuration for {vm_name}
-
-Host jump-host
-    HostName {host_ip}
-    User {username}
-    IdentityFile ~/.ssh/{private_key_filename}
-
-Host {vm_name}
-    HostName {vm_hostname}
-    User {username}
-    ProxyJump jump-host
-    IdentityFile ~/.ssh/{private_key_filename}
-# --- End of config block ---{% endif %}</textarea>
+                                        <textarea class="form-control font-monospace" id="ssh_config_template" name="ssh_config_template" rows="12"></textarea>
                                         <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
                                     </div>
                                 </div>
@@ -306,26 +292,7 @@ Host {vm_name}
                                     <h6 class="mb-3"><i class="bi bi-journal-text"></i> Instructions Template</h6>
                                     <div class="mb-3">
                                         <label for="instructions_template" class="form-label">Instructions Template</label>
-                                        <textarea class="form-control font-monospace" id="instructions_template" name="instructions_template" rows="12"
-                                                  placeholder="# Instructions template with placeholders">{% if connection_templates %}{{ connection_templates.instructions_template }}{% else %}Welcome to the Workshop!
-
-Your personal environment is ready.
-
-== SSH Access ==
-You can connect to your instance using a standard SSH client with the provided key.
-
-{vm_ip_note}
-
-== Setup Instructions ==
-
-1. Save your private key
-2. Add SSH config to ~/.ssh/config
-3. Connect: ssh {vm_name}
-
-== How It Works ==
-The SSH connection uses a jump host to reach the VM.
-
-A jump user '{username}' has been automatically created on the host system.{% endif %}</textarea>
+                                        <textarea class="form-control font-monospace" id="instructions_template" name="instructions_template" rows="12"></textarea>
                                         <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_ip_note}</code>, <code>{vm_hostname}</code></small>
                                     </div>
                                 </div>

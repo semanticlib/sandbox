@@ -9,6 +9,7 @@ from core.database import get_db
 from core.models import AdminUser
 from core.security import get_password_hash, verify_password, create_access_token
 from core.config import settings
+from core.rate_limiter import login_rate_limiter
 
 templates = Jinja2Templates(directory="templates")
 templates.env.globals['app_title'] = settings.APP_TITLE
@@ -19,6 +20,20 @@ router = APIRouter()
 def admin_exists(db: Session) -> bool:
     """Check if any admin user exists"""
     return db.query(AdminUser).first() is not None
+
+
+def get_client_ip(request: Request) -> str:
+    """Get client IP address from request"""
+    # Check for X-Forwarded-For header (behind proxy)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    # Check for X-Real-IP header
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    # Fallback to direct client IP
+    return request.client.host if request.client else "unknown"
 
 
 @router.get("/setup", response_class=HTMLResponse)
@@ -100,6 +115,25 @@ async def login(
     db: Session = Depends(get_db)
 ):
     """Handle login form submission"""
+    # Get client IP for rate limiting
+    client_ip = get_client_ip(request)
+    
+    # Rate limit by IP address
+    if login_rate_limiter.is_rate_limited(client_ip):
+        retry_after = login_rate_limiter.get_retry_after(client_ip)
+        return templates.TemplateResponse("auth/login.html", {
+            "request": request,
+            "error": f"Too many login attempts. Please try again in {retry_after} seconds."
+        })
+    
+    # Also rate limit by username to prevent targeted attacks
+    if login_rate_limiter.is_rate_limited(f"user:{username}"):
+        retry_after = login_rate_limiter.get_retry_after(f"user:{username}")
+        return templates.TemplateResponse("auth/login.html", {
+            "request": request,
+            "error": f"Too many login attempts for this account. Please try again in {retry_after} seconds."
+        })
+    
     user = db.query(AdminUser).filter(AdminUser.username == username).first()
 
     if not user or not verify_password(password, user.password_hash):
@@ -113,6 +147,10 @@ async def login(
             "request": request,
             "error": "Account is disabled"
         })
+
+    # Reset rate limiter on successful login
+    login_rate_limiter.reset(client_ip)
+    login_rate_limiter.reset(f"user:{username}")
 
     access_token = create_access_token(data={"sub": user.username})
     response = RedirectResponse(url="/", status_code=303)

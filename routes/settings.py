@@ -205,6 +205,16 @@ async def save_vm_settings(
     db: Session = Depends(get_db)
 ):
     """Save default VM settings"""
+    # Validate username
+    from core.validators import validate_username, validate_positive_integer
+    
+    is_valid, error = validate_username(username)
+    if not is_valid:
+        return RedirectResponse(
+            url=f"/settings?vm_error={error}",
+            status_code=303
+        )
+    
     # Validate cloud-init template if provided
     if cloud_init.strip():
         from services.cloud_init_service import validate_cloud_init_template

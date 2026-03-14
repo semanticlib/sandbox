@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.validators import validate_instance_name, validate_positive_integer
 from services.lxd_service import LXDService
 from services.instance_tasks import InstanceTaskService, creation_tasks
 
@@ -31,11 +32,25 @@ async def create_instance(
         instance_type = data.get("type", "virtual-machine")
 
         # Validate instance name
-        if not name or not name.replace("-", "").replace("_", "").isalnum():
+        is_valid, error = validate_instance_name(name)
+        if not is_valid:
             return JSONResponse({
                 "success": False,
-                "message": "Instance name must be alphanumeric (hyphens and underscores allowed)"
+                "message": error
             })
+
+        # Validate numeric fields
+        is_valid, error = validate_positive_integer(cpu, "CPU", min_val=1, max_val=128)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": error})
+
+        is_valid, error = validate_positive_integer(ram, "RAM (GB)", min_val=1, max_val=512)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": error})
+
+        is_valid, error = validate_positive_integer(disk, "Disk (GB)", min_val=5, max_val=2048)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": error})
 
         # Get LXD settings BEFORE starting background thread
         lxd_settings_db = db.query(LXDSettings).first()

@@ -1,7 +1,78 @@
 // Instance creation with progress tracking
 let createPollingInterval = null;
 
+// Live search for instances table
+function initLiveSearch() {
+    const searchInput = document.getElementById('search-instances');
+    const clearButton = document.getElementById('clear-search');
+    
+    if (!searchInput) return;
+    
+    // Show/hide clear button
+    function updateClearButton() {
+        clearButton.style.display = searchInput.value ? 'block' : 'none';
+    }
+    
+    // Filter table rows
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('tbody tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const nameCell = row.querySelector('td:nth-child(2)'); // Name is 2nd column (after checkbox)
+            const ipCell = row.querySelector('td:nth-child(4)'); // IP is 4th column
+            
+            if (!nameCell) return;
+            
+            const name = nameCell.textContent.toLowerCase();
+            const ip = ipCell ? ipCell.textContent.toLowerCase() : '';
+            
+            // Show row if search term matches name or IP
+            if (searchTerm === '' || name.includes(searchTerm) || ip.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show "no results" message if needed
+        let noResultsMsg = document.getElementById('no-results-message');
+        if (visibleCount === 0 && searchTerm !== '') {
+            if (!noResultsMsg) {
+                noResultsMsg = document.createElement('div');
+                noResultsMsg.id = 'no-results-message';
+                noResultsMsg.className = 'alert alert-info mb-0';
+                noResultsMsg.innerHTML = '<i class="bi bi-info-circle"></i> No instances matching your search';
+                document.querySelector('.card-body').appendChild(noResultsMsg);
+            }
+            noResultsMsg.style.display = 'block';
+        } else if (noResultsMsg) {
+            noResultsMsg.style.display = 'none';
+        }
+        
+        updateClearButton();
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', filterTable);
+    
+    if (clearButton) {
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            filterTable();
+            searchInput.focus();
+        });
+    }
+    
+    // Initial state
+    updateClearButton();
+}
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    initLiveSearch();
     const form = document.getElementById('create-instance-form');
     if (form) {
         form.addEventListener('submit', async function(e) {

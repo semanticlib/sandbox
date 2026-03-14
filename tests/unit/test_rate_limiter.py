@@ -95,12 +95,16 @@ class TestRateLimiter:
         limiter.is_rate_limited("test-ip")
         assert limiter.is_rate_limited("test-ip") is True
         
+        # Get initial retry time
+        initial_retry = limiter.get_retry_after("test-ip")
+        assert initial_retry > 0
+        
         # Wait 2 seconds
         time.sleep(2)
         
-        # Retry time should be less
+        # Retry time should be less (with small tolerance for timing variations)
         retry_after = limiter.get_retry_after("test-ip")
-        assert retry_after < 4  # Should be around 3 seconds now
+        assert retry_after < initial_retry - 1  # Should decrease by at least 1 second
 
     def test_old_attempts_expire(self):
         """Test that attempts outside window are cleaned up."""

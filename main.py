@@ -1,4 +1,5 @@
 """Main FastAPI application entry point"""
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -13,7 +14,17 @@ from core import models  # noqa: F401
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title=settings.APP_TITLE)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events"""
+    # Startup
+    print(f"🚀 {settings.APP_TITLE} started")
+    yield
+    # Shutdown (if needed in future)
+
+
+app = FastAPI(title=settings.APP_TITLE, lifespan=lifespan)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -180,11 +191,3 @@ async def health_check(db=Depends(get_db)):
         health_status["checks"]["admin_user"] = {"status": "error", "message": str(e)}
     
     return health_status
-
-
-# ============== Startup ==============
-
-@app.on_event("startup")
-async def startup_event():
-    """Application startup"""
-    print(f"🚀 {settings.APP_TITLE} started")

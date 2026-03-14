@@ -7,7 +7,7 @@ Tests cover:
 - Edge cases and security scenarios
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 
 from core.security import (
@@ -115,8 +115,8 @@ class TestCreateAccessToken:
         token = create_access_token(data)
         
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        exp_time = datetime.fromtimestamp(payload["exp"])
-        now = datetime.utcnow()
+        exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        now = datetime.now(timezone.utc)
         
         # Should expire in approximately 60 minutes
         delta = exp_time - now
@@ -129,8 +129,8 @@ class TestCreateAccessToken:
         token = create_access_token(data, expires_delta=expires_delta)
         
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        exp_time = datetime.fromtimestamp(payload["exp"])
-        now = datetime.utcnow()
+        exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        now = datetime.now(timezone.utc)
         
         # Should expire in approximately 30 minutes
         delta = exp_time - now

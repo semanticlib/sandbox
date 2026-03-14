@@ -13,7 +13,7 @@ class LXDService:
     def get_client(self):
         """Get LXD client based on settings"""
         from services.lxd_client import get_lxd_client
-        from models import LXDSettings
+        from core.models import LXDSettings
 
         settings = self.db.query(LXDSettings).first()
         if not settings:
@@ -173,7 +173,7 @@ class LXDService:
 
     def test_connection(self) -> Dict[str, Any]:
         """Test LXD connection"""
-        from models import LXDSettings
+        from core.models import LXDSettings
 
         settings = self.db.query(LXDSettings).first()
         if not settings:

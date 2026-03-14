@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import filters
 
-from database import engine, Base
+from core.database import engine, Base
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -34,8 +34,8 @@ app.include_router(settings.router)
 from fastapi import Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
-from database import get_db
-from models import AdminUser
+from core.database import get_db
+from core.models import AdminUser
 
 
 @app.exception_handler(404)
@@ -62,7 +62,7 @@ async def general_exception_handler(request: Request, exc):
 
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
-from auth import SECRET_KEY, ALGORITHM
+from core.security import SECRET_KEY, ALGORITHM
 
 
 def get_current_user(request: Request, db = Depends(get_db)):

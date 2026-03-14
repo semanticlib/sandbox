@@ -4,9 +4,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AdminUser, LXDSettings, VMDefaultSettings
-from auth import get_password_hash, verify_password
+from core.database import get_db
+from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.security import get_password_hash, verify_password
 from services.lxd_service import LXDService
 
 templates = Jinja2Templates(directory="templates")
@@ -17,7 +17,7 @@ router = APIRouter(tags=["settings"])
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     """Get current logged-in user from session cookie"""
     from jose import JWTError, jwt
-    from auth import SECRET_KEY, ALGORITHM
+    from core.security import SECRET_KEY, ALGORITHM
     
     token = request.cookies.get("access_token")
     if not token:
@@ -165,7 +165,7 @@ async def test_lxd_connection(request: Request, db: Session = Depends(get_db)):
 async def generate_certificate(request: Request):
     """Generate client certificate for LXD authentication"""
     try:
-        from cert_utils import generate_client_certificate
+        from utils.cert_utils import generate_client_certificate
         cert_pem, key_pem = generate_client_certificate("fastapi-client")
         return JSONResponse({
             "success": True,

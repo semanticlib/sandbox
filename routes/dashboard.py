@@ -5,8 +5,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AdminUser, LXDSettings, VMDefaultSettings
+from core.database import get_db
+from core.models import AdminUser, LXDSettings, VMDefaultSettings
 from services.metrics_service import get_system_metrics
 from services.lxd_service import LXDService
 
@@ -18,7 +18,7 @@ router = APIRouter()
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     """Get current logged-in user from session cookie"""
     from jose import JWTError, jwt
-    from auth import SECRET_KEY, ALGORITHM
+    from core.security import SECRET_KEY, ALGORITHM
     
     token = request.cookies.get("access_token")
     if not token:

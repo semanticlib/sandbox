@@ -5,9 +5,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AdminUser
-from auth import get_password_hash, verify_password, create_access_token
+from core.database import get_db
+from core.models import AdminUser
+from core.security import get_password_hash, verify_password, create_access_token
 
 templates = Jinja2Templates(directory="templates")
 

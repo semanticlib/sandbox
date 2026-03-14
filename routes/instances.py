@@ -4,8 +4,8 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AdminUser, LXDSettings, VMDefaultSettings
+from core.database import get_db
+from core.models import AdminUser, LXDSettings, VMDefaultSettings
 from services.lxd_service import LXDService
 from services.instance_tasks import InstanceTaskService, creation_tasks
 

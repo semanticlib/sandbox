@@ -14,6 +14,11 @@
 sandbox.example.com {
     # Automatic HTTPS with Let's Encrypt
     reverse_proxy localhost:8000
+
+    # Increase request body size for cloud-init ISO uploads
+    request_body {
+		max_size 1MB
+	}
     
     # Increase timeout for long-running operations (bulk VM creation)
     @long_running {

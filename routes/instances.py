@@ -163,6 +163,34 @@ async def get_instance_creation_status(
 
 # ============== Bulk Operations (BEFORE {instance_name} routes) ==============
 
+@router.post("/api/expand-pattern")
+async def api_expand_pattern(request: Request):
+    """Expand a pattern into a list of names (for UI preview)"""
+    from utils.pattern_expander import expand_names_input
+    
+    try:
+        data = await request.json()
+        pattern = data.get("pattern", "")
+        
+        names = expand_names_input(pattern)
+        
+        return JSONResponse({
+            "success": True,
+            "names": names,
+            "count": len(names)
+        })
+    except ValueError as e:
+        return JSONResponse({
+            "success": False,
+            "message": str(e)
+        }, status_code=400)
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": "Invalid pattern format"
+        }, status_code=400)
+
+
 @router.get("/bulk/preflight")
 async def bulk_preflight_check(
     names: str = "",
@@ -198,15 +226,19 @@ async def bulk_create_instances(
 ):
     """Create multiple instances at once"""
     from services.bulk_service import BulkOperationService
+    from utils.pattern_expander import expand_names_input
 
     try:
         data = await request.json()
 
-        # Parse names (support list or comma-separated string)
-        names_input = data.get("names", [])
+        # Parse names (support list, comma-separated, or patterns)
+        names_input = data.get("names", "")
+        
+        # Expand patterns if provided
         if isinstance(names_input, str):
-            instance_names = [n.strip() for n in names_input.split(",") if n.strip()]
+            instance_names = expand_names_input(names_input)
         else:
+            # Already a list, use as-is
             instance_names = names_input
 
         # Validate all names
@@ -223,6 +255,13 @@ async def bulk_create_instances(
             return JSONResponse({
                 "success": False,
                 "message": "Duplicate instance names detected"
+            })
+
+        # Validate we have at least one name
+        if not instance_names:
+            return JSONResponse({
+                "success": False,
+                "message": "No instance names provided"
             })
 
         # Validate resources
@@ -286,6 +325,10 @@ async def bulk_create_instances(
             "message": f"Starting bulk creation of {len(instance_names)} instances..."
         })
 
+    except ValueError as e:
+        import logging
+        logging.exception("Pattern expansion error")
+        return JSONResponse({"success": False, "message": str(e)})
     except Exception:
         import logging
         logging.exception("Error in bulk create")

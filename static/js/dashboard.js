@@ -305,7 +305,28 @@ async function checkBulkPreflight() {
         return;
     }
     
-    const names = namesText.split(/[\n,]+/).map(n => n.trim()).filter(n => n);
+    // Expand patterns client-side for preview
+    let instanceNames;
+    try {
+        const response = await fetch('/api/expand-pattern', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pattern: namesText })
+        });
+        const data = await response.json();
+        if (data.success) {
+            instanceNames = data.names;
+        } else {
+            document.getElementById('bulk-preflight-result').innerHTML = 
+                `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.message}</div>`;
+            document.getElementById('bulkCreateStartBtn').disabled = true;
+            return;
+        }
+    } catch (error) {
+        // Fallback: simple split if API fails
+        instanceNames = namesText.split(/[\n,]+/).map(n => n.trim()).filter(n => n);
+    }
+    
     const cpu = parseInt(document.getElementById('bulk_cpu').value);
     const ram = parseInt(document.getElementById('bulk_ram').value);
     const disk = parseInt(document.getElementById('bulk_disk').value);
@@ -315,7 +336,7 @@ async function checkBulkPreflight() {
     
     try {
         const params = new URLSearchParams({
-            names: names.join(','),
+            names: instanceNames.join(','),
             cpu: cpu.toString(),
             ram: ram.toString(),
             disk: disk.toString()
@@ -326,8 +347,14 @@ async function checkBulkPreflight() {
         
         let html = '';
         
+        // Show preview of names to be created
+        html += `<div class="alert alert-info">
+            <strong>Will create ${instanceNames.length} instance(s):</strong><br>
+            <small>${instanceNames.slice(0, 10).join(', ')}${instanceNames.length > 10 ? '...' : ''}</small>
+        </div>`;
+        
         if (checks.passed) {
-            html = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All pre-flight checks passed!</div>';
+            html += '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All pre-flight checks passed!</div>';
             html += `<div class="alert alert-info mt-2 mb-0">
                 <strong>Resources required:</strong><br>
                 CPU: ${checks.resources_requested?.cpu || 0} vCPUs | 

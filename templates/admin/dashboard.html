@@ -391,9 +391,14 @@
                 <form id="bulk-create-form">
                     <div class="mb-3">
                         <label for="bulk_names" class="form-label">Instance Names</label>
-                        <textarea class="form-control" id="bulk_names" rows="4" 
-                                  placeholder="Enter one name per line, or comma-separated names&#10;Example:&#10;vm-001&#10;vm-002&#10;vm-003" required></textarea>
-                        <div class="form-text">Names must be alphanumeric (hyphens and underscores allowed). Must start with a letter.</div>
+                        <textarea class="form-control" id="bulk_names" rows="6" 
+                                  placeholder="Enter names, one per line:&#10;vm-001&#10;vm-002&#10;&#10;Or use patterns:&#10;test-vm-{01-05}" required></textarea>
+                        <div class="form-text text-muted">
+                            <strong>Patterns supported:</strong><br>
+                            <code>vm-{01-05}</code> → vm-01, vm-02, vm-03, vm-04, vm-05<br>
+                            <code>server-{1-3}</code> → server-1, server-2, server-3<br>
+                            <code>test-{a-c}</code> → test-a, test-b, test-c
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-3 mb-3">

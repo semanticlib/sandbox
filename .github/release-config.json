@@ -1,0 +1,34 @@
+{
+  "categories": [
+    {
+      "title": "## 🔒 Security Fixes",
+      "labels": ["security", "vulnerability"]
+    },
+    {
+      "title": "## 🚀 Features",
+      "labels": ["feature", "enhancement"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": ["bug", "fix"]
+    },
+    {
+      "title": "## 📝 Documentation",
+      "labels": ["documentation"]
+    },
+    {
+      "title": "## 🧪 Tests",
+      "labels": ["tests"]
+    },
+    {
+      "title": "## 🔧 Maintenance",
+      "labels": ["chore", "refactor", "ci"]
+    }
+  ],
+  "ignore_labels": [
+    "skip-changelog"
+  ],
+  "template": "${{CHANGELOG}}",
+  "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
+  "empty_template": "- No changes"
+}

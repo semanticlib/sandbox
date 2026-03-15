@@ -20,7 +20,7 @@ A web-based interface for managing LXD virtual machines and containers. Designed
 
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/semanticlib/sandbox.git
 cd sandbox
 
 # Create virtual environment
@@ -105,6 +105,35 @@ source .venv/bin/activate
 ./scripts/test.sh fast     # Fast mode (no coverage)
 ./scripts/test.sh html     # Generate coverage report
 ```
+
+## Versioning & Releases
+
+This project uses [Semantic Versioning](https://semver.org/).
+
+### Creating a Release
+
+```bash
+# Bump version (major|minor|patch)
+./scripts/bump_version.py patch
+
+# Commit and tag
+git add -A
+git commit -m "chore: bump version to v0.2.0"
+git tag v0.2.0
+
+# Push (triggers release workflow)
+git push && git push --tags
+```
+
+The GitHub Actions workflow will:
+1. Run tests
+2. Generate changelog from PR labels
+3. Create GitHub release with assets
+4. Upload to PyPI (if configured)
+
+### Upgrade
+
+See [UPGRADE.md](./UPGRADE.md) for upgrade instructions between versions.
 
 ## Security Notes
 

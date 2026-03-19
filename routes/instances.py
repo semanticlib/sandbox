@@ -202,11 +202,17 @@ async def bulk_preflight_check(
 ):
     """Run pre-flight checks before bulk operations"""
     from services.bulk_service import BulkOperationService
+    from utils.pattern_expander import expand_names_input
 
-    # Parse names if provided
+    # Parse names if provided (expand patterns)
     instance_names = []
     if names:
-        instance_names = [n.strip() for n in names.split(",") if n.strip()]
+        # Split by comma first (in case multiple patterns/names are provided)
+        name_parts = [n.strip() for n in names.split(",") if n.strip()]
+        # Expand each part (handles both patterns and plain names)
+        for part in name_parts:
+            expanded = expand_names_input(part)
+            instance_names.extend(expanded)
 
     checks = BulkOperationService.check_preflight(
         db,

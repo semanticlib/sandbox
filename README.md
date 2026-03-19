@@ -31,6 +31,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Pre-setup
+
+Create at least one VM in LXD using either CLI or LXD Web UI. For example:
+
+```bash
+lxc launch ubuntu:24.04 test-vm --vm
+```
+
+This step will download the ubuntu:24.04 image. The Sandbox app will only show these downloaded images in the settings page.
+
 ## Running
 
 ### Development
@@ -46,7 +56,7 @@ python main.py
 1. **Configure environment:**
    ```bash
    sudo cp env.example /etc/sandbox/.env
-   sudo nano /etc/sandbox/.env  # Set SECRET_KEY and other values
+   sudo nano /etc/sandbox/.env  # Set SECRET_KEY and HOST_SERVER_IP at minimum
    ```
 
 2. **Install systemd service:**

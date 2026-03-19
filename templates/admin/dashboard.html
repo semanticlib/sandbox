@@ -377,6 +377,93 @@
     </div>
 </div>
 
+<!-- Bulk Start Confirmation Modal -->
+<div class="modal fade" id="bulkStartModal" tabindex="-1" aria-labelledby="bulkStartModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="bulkStartModalLabel">
+                    <i class="bi bi-play-circle"></i> Confirm Bulk Start
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="bulkStartMessage"></p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> Only stopped instances will be started.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="bulkStartConfirmBtn">
+                    <i class="bi bi-play-fill"></i> Start Instances
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Stop Confirmation Modal -->
+<div class="modal fade" id="bulkStopModal" tabindex="-1" aria-labelledby="bulkStopModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title" id="bulkStopModalLabel">
+                    <i class="bi bi-stop-circle"></i> Confirm Bulk Stop
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="bulkStopMessage"></p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This will gracefully shut down the selected instances.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="bulkStopConfirmBtn">
+                    <i class="bi bi-stop-fill"></i> Stop Instances
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="bulkDeleteModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirm Bulk Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="bulkDeleteMessage"></p>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <strong>Warning:</strong> This action cannot be undone. All data will be permanently deleted.
+                </div>
+                <div id="bulkDeleteRunningWarning" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> Running instances will be stopped before deletion.
+                </div>
+                <div id="bulkDeleteInstanceList" class="mt-3" style="max-height: 200px; overflow-y: auto;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="bulkDeleteConfirmBtn">
+                    <i class="bi bi-trash"></i> Delete Instances
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Bulk Create Modal -->
 <div class="modal fade" id="bulkCreateModal" tabindex="-1" aria-labelledby="bulkCreateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">

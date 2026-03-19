@@ -172,33 +172,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Single instance action modals
+let instanceStartModal = null;
+let instanceStopModal = null;
+let pendingInstanceAction = null;
+
 async function startInstance(name) {
-    const resultDiv = document.getElementById('action-result');
-    resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Starting instance...</div>';
+    // Show modal confirmation
+    document.getElementById('bulkStartMessage').textContent = 
+        `Start instance "${name}"?`;
+    
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkStartConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkStartConfirmBtn').addEventListener('click', async function() {
+        instanceStartModal.hide();
+        await executeInstanceAction('start', name);
+    });
 
-    try {
-        const response = await fetch(`/instances/${name}/start`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-            resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.message}</div>`;
-        }
-    } catch (error) {
-        resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error: ${error.message}</div>`;
-    }
+    instanceStartModal = new bootstrap.Modal(document.getElementById('bulkStartModal'));
+    instanceStartModal.show();
 }
 
 async function stopInstance(name) {
+    // Show modal confirmation
+    document.getElementById('bulkStopMessage').textContent = 
+        `Stop instance "${name}"?`;
+    
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkStopConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkStopConfirmBtn').addEventListener('click', async function() {
+        instanceStopModal.hide();
+        await executeInstanceAction('stop', name);
+    });
+
+    instanceStopModal = new bootstrap.Modal(document.getElementById('bulkStopModal'));
+    instanceStopModal.show();
+}
+
+async function executeInstanceAction(action, name) {
     const resultDiv = document.getElementById('action-result');
+    const actionText = action.charAt(0).toUpperCase() + action.slice(1);
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Stopping instance...</div>';
+    resultDiv.innerHTML = `<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> ${actionText}ing instance...</div>`;
 
     try {
-        const response = await fetch(`/instances/${name}/stop`, { method: 'POST' });
+        const response = await fetch(`/instances/${name}/${action}`, { method: 'POST' });
         const data = await response.json();
 
         if (data.success) {
@@ -219,10 +239,10 @@ const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 function confirmDelete(name, status) {
     instanceToDelete = name;
     document.getElementById('deleteInstanceName').textContent = name;
-    
+
     const deleteBtn = document.getElementById('deleteConfirmBtn');
     const stopWarning = document.getElementById('stopWarning');
-    
+
     // Disable delete button if instance is running
     if (status === 'Running') {
         stopWarning.style.display = 'block';
@@ -234,7 +254,7 @@ function confirmDelete(name, status) {
         deleteBtn.disabled = false;
         deleteBtn.title = '';
     }
-    
+
     deleteModal.show();
 }
 
@@ -506,76 +526,167 @@ async function pollBulkOperation() {
     }
 }
 
+// Bulk operation modal instances
+let bulkStartModal = null;
+let bulkStopModal = null;
+let bulkDeleteModal = null;
+let pendingBulkAction = null;
+
 // Bulk Stop/Delete Functions
 async function bulkStartSelected() {
     const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
     const names = Array.from(checkboxes).map(cb => cb.value);
-    
+
     if (names.length === 0) {
         alert('Please select at least one instance');
         return;
     }
+
+    // Show modal confirmation
+    document.getElementById('bulkStartMessage').textContent = 
+        `Start ${names.length} selected instance(s)?`;
     
-    if (!confirm(`Start ${names.length} selected instance(s)?`)) return;
-    
-    await executeBulkOperation('start', names);
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkStartConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkStartConfirmBtn').addEventListener('click', async function() {
+        bulkStartModal.hide();
+        await executeBulkOperation('start', names);
+    });
+
+    bulkStartModal = new bootstrap.Modal(document.getElementById('bulkStartModal'));
+    bulkStartModal.show();
 }
 
 async function bulkStopSelected() {
     const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
     const names = Array.from(checkboxes).map(cb => cb.value);
-    
+
     if (names.length === 0) {
         alert('Please select at least one instance');
         return;
     }
+
+    // Show modal confirmation
+    document.getElementById('bulkStopMessage').textContent = 
+        `Stop ${names.length} selected instance(s)?`;
     
-    if (!confirm(`Stop ${names.length} selected instance(s)?`)) return;
-    
-    await executeBulkOperation('stop', names);
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkStopConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkStopConfirmBtn').addEventListener('click', async function() {
+        bulkStopModal.hide();
+        await executeBulkOperation('stop', names);
+    });
+
+    bulkStopModal = new bootstrap.Modal(document.getElementById('bulkStopModal'));
+    bulkStopModal.show();
 }
 
 async function bulkDeleteSelected() {
     const checkboxes = document.querySelectorAll('.instance-checkbox:checked');
     const names = Array.from(checkboxes).map(cb => cb.value);
     const statuses = Array.from(checkboxes).map(cb => cb.dataset.status);
-    
+
     if (names.length === 0) {
         alert('Please select at least one instance');
         return;
     }
-    
+
     // Check for running instances
     const runningNames = names.filter((_, i) => statuses[i] === 'Running');
+
+    // Update modal content
+    document.getElementById('bulkDeleteMessage').textContent = 
+        `Delete ${names.length} selected instance(s)? This cannot be undone!`;
+    
+    const runningWarning = document.getElementById('bulkDeleteRunningWarning');
+    const instanceList = document.getElementById('bulkDeleteInstanceList');
     
     if (runningNames.length > 0) {
-        const confirmMsg = `${runningNames.length} of the selected instance(s) are still running:\n${runningNames.join(', ')}\n\n` +
-                          `They will be stopped before deletion.\n\n` +
-                          `Do you want to proceed?`;
-        if (!confirm(confirmMsg)) return;
+        runningWarning.style.display = 'block';
+        runningWarning.innerHTML = `
+            <i class="bi bi-info-circle"></i>
+            <strong>Note:</strong> ${runningNames.length} running instance(s) will be stopped before deletion:
+            <ul class="mb-0 mt-2">${runningNames.map(n => `<li>${n}</li>`).join('')}</ul>
+        `;
     } else {
-        if (!confirm(`Delete ${names.length} selected instance(s)? This cannot be undone!`)) return;
+        runningWarning.style.display = 'none';
     }
+
+    // Show instance list
+    instanceList.innerHTML = `
+        <strong>Instances to delete:</strong>
+        <ul class="mb-0 mt-2">${names.map(n => `<li>${n}</li>`).join('')}</ul>
+    `;
     
-    await executeBulkOperation('delete', names);
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkDeleteConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkDeleteConfirmBtn').addEventListener('click', async function() {
+        bulkDeleteModal.hide();
+        await executeBulkOperation('delete', names);
+    });
+
+    bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+    bulkDeleteModal.show();
 }
 
 async function bulkStartAll() {
-    if (!confirm('Start ALL stopped instances?')) return;
+    // Show modal confirmation
+    document.getElementById('bulkStartMessage').textContent = 
+        'Start ALL stopped instances?';
     
-    await executeBulkOperation('start', [], true);
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkStartConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkStartConfirmBtn').addEventListener('click', async function() {
+        bulkStartModal.hide();
+        await executeBulkOperation('start', [], true);
+    });
+
+    bulkStartModal = new bootstrap.Modal(document.getElementById('bulkStartModal'));
+    bulkStartModal.show();
 }
 
 async function bulkStopAll() {
-    if (!confirm('Stop ALL running instances?')) return;
+    // Show modal confirmation
+    document.getElementById('bulkStopMessage').textContent = 
+        'Stop ALL running instances?';
     
-    await executeBulkOperation('stop', [], true);
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkStopConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkStopConfirmBtn').addEventListener('click', async function() {
+        bulkStopModal.hide();
+        await executeBulkOperation('stop', [], true);
+    });
+
+    bulkStopModal = new bootstrap.Modal(document.getElementById('bulkStopModal'));
+    bulkStopModal.show();
 }
 
 async function bulkDeleteAll() {
-    if (!confirm('Delete ALL stopped instances? This cannot be undone!')) return;
+    // Show modal confirmation
+    document.getElementById('bulkDeleteMessage').textContent = 
+        'Delete ALL stopped instances? This cannot be undone!';
     
-    await executeBulkOperation('delete', [], true);
+    const runningWarning = document.getElementById('bulkDeleteRunningWarning');
+    const instanceList = document.getElementById('bulkDeleteInstanceList');
+    
+    runningWarning.style.display = 'none';
+    instanceList.innerHTML = '';
+    
+    // Remove old event listeners and add new one
+    const confirmBtn = document.getElementById('bulkDeleteConfirmBtn');
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    document.getElementById('bulkDeleteConfirmBtn').addEventListener('click', async function() {
+        bulkDeleteModal.hide();
+        await executeBulkOperation('delete', [], true);
+    });
+
+    bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+    bulkDeleteModal.show();
 }
 
 async function executeBulkOperation(action, names, all = false) {

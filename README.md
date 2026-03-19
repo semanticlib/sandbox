@@ -90,15 +90,6 @@ python main.py
 4. Set default VM resources (CPU, RAM, disk, cloud-init template)
 5. Create VMs individually or in bulk
 
-## Testing
-
-```bash
-source .venv/bin/activate
-./scripts/test.sh          # Run all tests
-./scripts/test.sh fast     # Fast mode (no coverage)
-./scripts/test.sh html     # Generate coverage report
-```
-
 ## Security Notes
 
 - Always set a strong `SECRET_KEY` in production
@@ -110,6 +101,8 @@ source .venv/bin/activate
 ### Connection Method: SSH ProxyJump
 
 The Sandbox Manager uses **SSH ProxyJump** to provide secure access to guest VMs without requiring direct network exposure or shell access to the LXD host.
+
+![User Flow Diagram](screenshots/user-flow-diagram.svg)
 
 **How it works:**
 
@@ -234,37 +227,6 @@ Host vm-01
 ### Why This is a Secure Model
 
 The Sandbox Manager architecture follows **defense in depth** principles:
-
-```mermaid
-flowchart TD
-    subgraph "User's Machine"
-        U[User]
-        SSH[SSH Client with ProxyJump]
-        Browser[Browser<br/>localhost:8080]
-    end
-
-    subgraph "LXD Host"
-        Host[LXD Host<br/>No Shell Access]
-        LXD[LXD Service]
-        Forward[SSH Tunnel<br/>LocalForward]
-    end
-
-    subgraph "Guest VM"
-        VM[Guest VM<br/>vm-01]
-        App[Web Application<br/>Port 80]
-    end
-
-    U -->|1. SSH Connect| SSH
-    SSH -->|2. ProxyJump| Host
-    Host -->|3. Forward to VM| VM
-    Browser -->|4. LocalForward Tunnel| Forward
-    Forward -->|5. Secure Tunnel| App
-    
-    style Host fill:#f9f9f9,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style VM fill:#e1f5e1,stroke:#2e7d32
-    style SSH fill:#e3f2fd,stroke:#1565c0
-    style Browser fill:#e3f2fd,stroke:#1565c0
-```
 
 **Security benefits:**
 

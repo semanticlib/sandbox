@@ -328,7 +328,7 @@ async function checkBulkPreflight() {
     // Expand patterns client-side for preview
     let instanceNames;
     try {
-        const response = await fetch('/api/expand-pattern', {
+        const response = await fetch('/instances/api/expand-pattern', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pattern: namesText })
@@ -337,7 +337,7 @@ async function checkBulkPreflight() {
         if (data.success) {
             instanceNames = data.names;
         } else {
-            document.getElementById('bulk-preflight-result').innerHTML = 
+            document.getElementById('bulk-preflight-result').innerHTML =
                 `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.message}</div>`;
             document.getElementById('bulkCreateStartBtn').disabled = true;
             return;

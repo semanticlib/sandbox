@@ -422,53 +422,56 @@ async function checkBulkPreflight() {
 
 async function startBulkCreate() {
     const namesText = document.getElementById('bulk_names').value.trim();
-    const names = namesText.split(/[\n,]+/).map(n => n.trim()).filter(n => n);
     
-    if (names.length === 0) {
+    if (!namesText) {
         alert('Please enter at least one instance name');
         return;
     }
-    
+
+    // Expand patterns server-side by sending the raw pattern text
     const formData = {
-        names: names,
+        names: namesText,  // Send raw pattern (e.g., "vm-{01-03}")
         cpu: parseInt(document.getElementById('bulk_cpu').value),
         ram: parseInt(document.getElementById('bulk_ram').value),
         disk: parseInt(document.getElementById('bulk_disk').value),
         type: document.getElementById('bulk_type').value
     };
-    
+
     // Close the bulk create modal and show progress modal
     const bulkCreateModal = bootstrap.Modal.getInstance(document.getElementById('bulkCreateModal'));
     bulkCreateModal.hide();
-    
+
     const progressModal = new bootstrap.Modal(document.getElementById('bulkProgressModal'));
     progressModal.show();
-    
+
+    // Get expanded count from preflight check for display
+    const expandedCount = formData.names.split(/[\n,]+/).filter(n => n.trim()).length;
     document.getElementById('bulk-progress-bar').style.width = '0%';
-    document.getElementById('bulk-progress-message').textContent = `Starting bulk creation of ${names.length} instances...`;
+    document.getElementById('bulk-progress-message').textContent = `Starting bulk creation...`;
     document.getElementById('bulk-progress-details').textContent = '';
-    
+
     try {
         const response = await fetch('/instances/bulk/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
-        
+
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.message);
         }
-        
+
         bulkOperationId = data.operation_id;
-        
+
         // Start polling for progress
         bulkPollingInterval = setInterval(pollBulkOperation, 2000);
-        
+
     } catch (error) {
+        console.error('Bulk create error:', error);
         clearInterval(bulkPollingInterval);
-        document.getElementById('bulk-progress-message').textContent = 'Failed to start bulk creation';
+        document.getElementById('bulk-progress-message').textContent = `Failed to start bulk creation: ${error.message}`;
         document.getElementById('bulk-progress-bar').className = 'progress-bar bg-danger';
         setTimeout(() => location.reload(), 3000);
     }

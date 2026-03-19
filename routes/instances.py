@@ -233,19 +233,24 @@ async def bulk_create_instances(
     """Create multiple instances at once"""
     from services.bulk_service import BulkOperationService
     from utils.pattern_expander import expand_names_input
+    import logging
 
     try:
         data = await request.json()
+        logging.info(f"Bulk create request data: {data}")
 
         # Parse names (support list, comma-separated, or patterns)
         names_input = data.get("names", "")
-        
+        logging.info(f"Names input (type: {type(names_input).__name__}): {names_input}")
+
         # Expand patterns if provided
         if isinstance(names_input, str):
             instance_names = expand_names_input(names_input)
+            logging.info(f"Expanded pattern to {len(instance_names)} instances: {instance_names}")
         else:
             # Already a list, use as-is
             instance_names = names_input
+            logging.info(f"Using list input: {instance_names}")
 
         # Validate all names
         for name in instance_names:
@@ -332,13 +337,11 @@ async def bulk_create_instances(
         })
 
     except ValueError as e:
-        import logging
         logging.exception("Pattern expansion error")
         return JSONResponse({"success": False, "message": str(e)})
-    except Exception:
-        import logging
+    except Exception as e:
         logging.exception("Error in bulk create")
-        return JSONResponse({"success": False, "message": "Failed to start bulk creation"})
+        return JSONResponse({"success": False, "message": f"Failed to start bulk creation: {str(e)}"})
 
 
 @router.post("/bulk/stop")

@@ -2,6 +2,8 @@
 
 A web-based interface for managing LXD virtual machines and containers. Designed for classrooms and workshops where you need to quickly create identical VMs for participants and clean them up afterwards.
 
+![Dashboard](screenshots/dashboard.png)
+
 ## Features
 
 - **Bulk VM Creation** - Create multiple VMs at once with pre-flight resource checks
@@ -15,6 +17,16 @@ A web-based interface for managing LXD virtual machines and containers. Designed
 - Linux host with LXD installed and configured
 - Python 3.10+
 - 50GB+ free disk space (depending on VM count)
+
+## Pre-setup
+
+Create at least one VM in LXD using either CLI or LXD Web UI. For example:
+
+```bash
+lxc launch ubuntu:24.04 test-vm --vm
+```
+
+This step will download the ubuntu:24.04 image. The Sandbox app will only show these downloaded images in the settings page.
 
 ## Installation
 
@@ -31,70 +43,39 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Pre-setup
-
-Create at least one VM in LXD using either CLI or LXD Web UI. For example:
-
-```bash
-lxc launch ubuntu:24.04 test-vm --vm
-```
-
-This step will download the ubuntu:24.04 image. The Sandbox app will only show these downloaded images in the settings page.
-
 ## Running
 
 ### Development
 
 ```bash
 source .venv/bin/activate
-python main.py
-# Access at http://localhost:8000
+fastapi dev
 ```
 
-### Production (Systemd + Caddy Reverse Proxy)
+### Production (Systemd)
 
-1. **Configure environment:**
-   ```bash
-   sudo cp env.example /etc/sandbox/.env
-   sudo nano /etc/sandbox/.env  # Set SECRET_KEY and HOST_SERVER_IP at minimum
-   ```
+Use the deployment script to run the app in production.
 
-2. **Install systemd service:**
-   ```bash
-   sudo cp sandbox.service /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable sandbox
-   sudo systemctl start sandbox
-   ```
+```bash
+sudo ./scripts/deploy.sh
+```
 
-3. **Setup Caddy reverse proxy (automatic HTTPS):**
-   ```bash
-   # Install Caddy: https://caddyserver.com/docs/install
-   sudo cp Caddyfile /etc/caddy/Caddyfile
-   sudo nano /etc/caddy/Caddyfile  # Change sandbox.example.com to your domain
-   sudo systemctl reload caddy
-   ```
+**Secure Access using SSH Tunneling**
 
-4. **Check status:**
-   ```bash
-   sudo systemctl status sandbox
-   sudo systemctl status caddy
-   # Access at: https://your-domain.com
-   ```
+Use SSH Tunneling to access the app
 
-## First Setup
+```bash
+ssh -L 8000:localhost:8000 user@<host-ip>
+```
 
-1. Open the web interface
-2. Create admin account on first launch
-3. Configure LXD connection in Settings (socket or HTTPS)
-4. Set default VM resources (CPU, RAM, disk, cloud-init template)
-5. Create VMs individually or in bulk
+Open `http://localhost:8000` in your browser
 
-## Security Notes
+
+## Security Notes if using Public IP
 
 - Always set a strong `SECRET_KEY` in production
-- Use Caddy reverse proxy for automatic HTTPS (ports 80/443 must be open)
 - **Important:** Auth cookies require HTTPS (`secure=True` flag). The app will work over HTTP for local testing, but login sessions won't persist without HTTPS.
+- Point any FQDN to your server and use Caddy for automatic SSL for your domain. See example [Caddyfile](Caddyfile) for reference.
 
 ## SSH Access & Network Architecture
 
@@ -115,25 +96,9 @@ The Sandbox Manager uses **SSH ProxyJump** to provide secure access to guest VMs
 ssh -J user@lxd-host-ip vm-username@vm-ip
 ```
 
-**Using the generated SSH config:**
-```bash
-# Download the SSH config from the web interface
-ssh -F /path/to/ssh_config vm-01
-```
+### Per-VM configuration with unique SSH key pairs (Ed25519)
 
-### Per-VM SSH Key Pairs (Ed25519)
-
-For enhanced security, the Sandbox Manager **automatically generates unique SSH key pairs** for each VM user:
-
-**Key features:**
-
-| Feature | Description |
-|---------|-------------|
-| **Algorithm** | Ed25519 (modern, secure, fast) |
-| **Key size** | 256-bit (equivalent security to 3072-bit RSA) |
-| **Per-VM isolation** | Each VM gets its own unique key pair |
-| **Auto-generated** | Keys created automatically on VM creation |
-| **Ready to use** | Private key provided for download immediately |
+For enhanced security, the Sandbox Manager **automatically generates unique SSH key pairs** for each VM user.
 
 **What you get:**
 
@@ -141,41 +106,30 @@ For enhanced security, the Sandbox Manager **automatically generates unique SSH 
 2. **SSH config template** - Pre-configured SSH config with all connection details
 3. **Setup instructions** - Step-by-step guide for connecting to your VM
 
-**Workflow:**
-
-```bash
-# 1. Download the SSH config and private key from the web interface
-# 2. Set proper permissions on the private key
-chmod 600 /path/to/vm-01-key
-
-# 3. Connect using the SSH config
-ssh -F /path/to/ssh_config -i /path/to/vm-01-key vm-01
-
-# Or use the inline command
-ssh -i /path/to/vm-01-key -J user@lxd-host-ip vm-username@vm-ip
-```
 
 **SSH config template example:**
 ```config
 # VM: vm-01
 # Generated by Sandbox Manager
+Host jump-host
+    HostName lxd-host-ip
+    User user
+    IdentityFile /path/to/vm-01-key
 
 Host vm-01
-    HostName 10.0.0.10
+    HostName vm-01-ip
     User ubuntu
     IdentityFile /path/to/vm-01-key
-    ProxyJump user@lxd-host-ip
+    ProxyJump jump-host
     LocalForward 8080 localhost:80
     LocalForward 8888 localhost:8888
 ```
 
-**Why Ed25519?**
+With the above configuration in `~/.ssh/config`, users can directly connect to the VM using the following command:
 
-- ✅ **More secure** - No known weaknesses, resistant to timing attacks
-- ✅ **Faster** - Faster key generation and signing than RSA/ECDSA
-- ✅ **Smaller keys** - 64-character public keys vs 300+ for RSA
-- ✅ **Deterministic signatures** - No random number generator required
-- ✅ **Modern standard** - Recommended by security experts since 2014
+```bash
+ssh vm-01
+```
 
 ### No Shell Access on LXD Host
 
@@ -208,23 +162,13 @@ ssh -J user@lxd-host-ip -L 8080:localhost:80 vm-username@vm-ip
 - No need to expose VM ports to the external network
 
 **Common use cases:**
-| Service | VM Port | Local Forward | Access URL |
+| Service | Local Forward | VM Port | Access URL |
 |---------|---------|---------------|------------|
-| Web server | 80 | 8080 | http://localhost:8080 |
-| Jupyter Notebook | 8888 | 8888 | http://localhost:8888 |
-| Custom app | 3000 | 3000 | http://localhost:3000 |
+| Web server default | 8080 | 80 | http://localhost:8080 |
+| Custom web app | 3000 | 3000 | http://localhost:3000 |
 
-**SSH Config with LocalForward:**
-```config
-Host vm-01
-    HostName 10.0.0.10
-    User ubuntu
-    ProxyJump user@lxd-host-ip
-    LocalForward 8080 localhost:80
-    LocalForward 8888 localhost:8888
-```
 
-### Why This is a Secure Model
+## Why This is a Secure Model
 
 The Sandbox Manager architecture follows **defense in depth** principles:
 
@@ -252,5 +196,4 @@ The Sandbox Manager architecture follows **defense in depth** principles:
 1. **Host isolation** - LXD host SSH is separate from VM access
 2. **No port forwarding abuse** - LocalForward only forwards to localhost on VM
 3. **Credential separation** - VM credentials independent from host credentials
-4. **Temporary access** - SSH configs can be invalidated by regenerating keys
-5. **No persistent tunnels** - Connections close when SSH session ends
+4. **No persistent tunnels** - Connections close when SSH session ends

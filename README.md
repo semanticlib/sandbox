@@ -29,9 +29,6 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Generate secure secret key
-echo "SECRET_KEY=$(openssl rand -hex 32)" > .env
 ```
 
 ## Running
@@ -83,20 +80,6 @@ python main.py
 4. Set default VM resources (CPU, RAM, disk, cloud-init template)
 5. Create VMs individually or in bulk
 
-## Bulk Operations
-
-- **Bulk Create** - Enter VM names (one per line), click "Check Prerequisites", then "Start Bulk Create"
-- **Start/Stop All** - Use toolbar buttons to manage all VMs at once
-- **Delete All** - Clean up all VMs after workshop ends
-
-## API Endpoints
-
-- `GET /health` - Health check with LXD status and disk space
-- `POST /instances/bulk/create` - Create multiple VMs
-- `POST /instances/bulk/start` - Start multiple VMs
-- `POST /instances/bulk/stop` - Stop multiple VMs
-- `POST /instances/bulk/delete` - Delete multiple VMs
-
 ## Testing
 
 ```bash
@@ -106,40 +89,8 @@ source .venv/bin/activate
 ./scripts/test.sh html     # Generate coverage report
 ```
 
-## Versioning & Releases
-
-This project uses [Semantic Versioning](https://semver.org/).
-
-### Creating a Release
-
-```bash
-# Bump version (major|minor|patch)
-./scripts/bump_version.py patch
-
-# Commit and tag
-git add -A
-git commit -m "chore: bump version to v0.2.0"
-git tag v0.2.0
-
-# Push (triggers release workflow)
-git push && git push --tags
-```
-
-The GitHub Actions workflow will:
-1. Run tests
-2. Generate changelog from PR labels
-3. Create GitHub release with assets
-4. Upload to PyPI (if configured)
-
-### Upgrade
-
-See [UPGRADE.md](./UPGRADE.md) for upgrade instructions between versions.
-
 ## Security Notes
 
 - Always set a strong `SECRET_KEY` in production
 - Use Caddy reverse proxy for automatic HTTPS (ports 80/443 must be open)
 - **Important:** Auth cookies require HTTPS (`secure=True` flag). The app will work over HTTP for local testing, but login sessions won't persist without HTTPS.
-- Rate limiting protects against brute-force login attempts
-- Input validation prevents path traversal and injection attacks
-- Password requirements: 8+ chars, uppercase, lowercase, number, special char

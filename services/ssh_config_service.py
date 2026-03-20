@@ -88,7 +88,14 @@ def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: 
     with open(ssh_config_path, 'w') as f:
         f.write(ssh_config_content)
 
+    # Create launch-server.bat file
+    launch_batch_content = f"ssh -F ssh-config {vm_name}\n"
+    launch_batch_path = os.path.join(instance_dir, "launch-server.bat")
+    with open(launch_batch_path, 'w') as f:
+        f.write(launch_batch_content)
+
     return {
         "ssh_config_path": ssh_config_path,
+        "launch_batch_path": launch_batch_path,
         "instance_dir": instance_dir
     }

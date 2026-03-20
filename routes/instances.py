@@ -725,7 +725,7 @@ async def download_ssh_config(
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for filename in ['id_ed25519', 'ssh-config']:
+        for filename in ['id_ed25519', 'ssh-config', 'launch-server.bat']:
             filepath = instance_dir / filename
             if filepath.exists():
                 zip_file.write(filepath, filename)

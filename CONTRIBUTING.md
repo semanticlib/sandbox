@@ -7,13 +7,12 @@ Thank you for contributing! This guide covers how to contribute code, report iss
 - [Bug Reports](#bug-reports)
 - [Feature Requests](#feature-requests)
 - [Pull Requests](#pull-requests)
-- [Release Process](#release-process)
 - [Development Setup](#development-setup)
 
 ## Bug Reports
 
 **Before reporting:**
-- [ ] Search existing [issues](https://github.com/YOUR_USERNAME/sandbox/issues)
+- [ ] Search existing [issues](https://github.com/semanticlib/sandbox/issues)
 - [ ] Check if fixed in latest version
 - [ ] Review logs: `sudo journalctl -u sandbox -f`
 
@@ -28,7 +27,7 @@ Thank you for contributing! This guide covers how to contribute code, report iss
 ## Feature Requests
 
 **Before requesting:**
-- [ ] Search existing [issues](https://github.com/YOUR_USERNAME/sandbox/issues)
+- [ ] Search existing [issues](https://github.com/semanticlib/sandbox/issues)
 - [ ] Check if it fits project scope (classroom VM management)
 
 **Include in request:**
@@ -87,61 +86,11 @@ Brief description of changes
 - [ ] Documentation updated
 ```
 
-## Release Process
-
-### Version Numbering
-
-We use [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`
-
-- **MAJOR** - Breaking changes
-- **MINOR** - New features (backward compatible)
-- **PATCH** - Bug fixes (backward compatible)
-
-### Creating a Release
-
-1. **Update version:**
-   ```bash
-   ./scripts/bump_version.py patch  # or minor/major
-   ```
-
-2. **Update CHANGELOG.md:**
-   - Review auto-generated changelog
-   - Add migration notes if needed
-   - Update UPGRADE.md
-
-3. **Commit and tag:**
-   ```bash
-   git add -A
-   git commit -m "chore: release v0.2.0"
-   git tag v0.2.0
-   ```
-
-4. **Push to trigger release:**
-   ```bash
-   git push && git push --tags
-   ```
-
-   GitHub Actions will:
-   - Run tests
-   - Generate release notes
-   - Create GitHub release
-   - Build distribution packages
-
-### Release Checklist
-
-- [ ] All tests pass
-- [ ] CHANGELOG.md updated
-- [ ] UPGRADE.md updated (if breaking changes)
-- [ ] Version bumped
-- [ ] Tagged and pushed
-- [ ] Release notes reviewed
-- [ ] Announcement (if major release)
-
 ## Development Setup
 
 ```bash
 # Fork and clone
-git clone https://github.com/YOUR_USERNAME/sandbox.git
+git clone https://github.com/semanticlib/sandbox.git
 cd sandbox
 
 # Create virtual environment
@@ -159,12 +108,11 @@ pip install -r requirements-test.txt
 ## Code Style
 
 - **Python:** PEP 8
-- **JavaScript:** ESLint (coming soon)
 - **Commit messages:** Conventional Commits
 
 ## Questions?
 
-- Open an [issue](https://github.com/YOUR_USERNAME/sandbox/issues) for questions
+- Open an [issue](https://github.com/semanticlib/sandbox/issues) for questions
 - Check existing issues for answers
 - Review [documentation](./README.md)
 

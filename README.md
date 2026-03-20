@@ -31,36 +31,13 @@ This step will download the ubuntu:24.04 image. The Sandbox app will only show t
 ## Installation
 
 ```bash
-# Clone repository
 git clone https://github.com/semanticlib/sandbox.git
 cd sandbox
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-## Running
-
-### Development
-
-```bash
-source .venv/bin/activate
-fastapi dev
-```
-
-### Production (Systemd)
-
-Use the deployment script to run the app in production.
-
-```bash
 sudo ./scripts/deploy.sh
+sudo systemctl status sandbox
 ```
 
-**Secure Access using SSH Tunneling**
+**Secure Access using SSH Tunnel**
 
 Use SSH Tunneling to access the app
 
@@ -71,7 +48,7 @@ ssh -L 8000:localhost:8000 user@<host-ip>
 Open `http://localhost:8000` in your browser
 
 
-## Security Notes if using Public IP
+## Security notes if using Public IP
 
 - Always set a strong `SECRET_KEY` in production
 - **Important:** Auth cookies require HTTPS (`secure=True` flag). The app will work over HTTP for local testing, but login sessions won't persist without HTTPS.
@@ -89,7 +66,7 @@ The Sandbox Manager uses **SSH ProxyJump** to provide secure access to guest VMs
 
 1. Users connect to VMs using SSH with the `-J` (ProxyJump) option
 2. The SSH connection jumps through the host machine to reach the guest VM
-3. Auto-generated SSH configs are provided for each VM in the web interface
+3. Auto-generated SSH configs are provided for each VM
 
 **Example SSH command:**
 ```bash
@@ -197,3 +174,8 @@ The Sandbox Manager architecture follows **defense in depth** principles:
 2. **No port forwarding abuse** - LocalForward only forwards to localhost on VM
 3. **Credential separation** - VM credentials independent from host credentials
 4. **No persistent tunnels** - Connections close when SSH session ends
+
+
+### Development
+
+Read the [Contribution Guidelines](CONTRIBUTING.md) for more information on development setup, testing and submitting pull requests.

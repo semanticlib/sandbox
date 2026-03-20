@@ -47,12 +47,21 @@ ssh -L 8000:localhost:8000 user@<host-ip>
 
 Open `http://localhost:8000` in your browser
 
+**Custom Port:**
 
-## Security notes if using Public IP
+To use a different port, set `PORT` in `/etc/sandbox/.env`:
+```bash
+PORT=9000
+```
 
-- Always set a strong `SECRET_KEY` in production
-- **Important:** Auth cookies require HTTPS (`secure=True` flag). The app will work over HTTP for local testing, but login sessions won't persist without HTTPS.
-- Point any FQDN to your server and use Caddy for automatic SSL for your domain. See example [Caddyfile](Caddyfile) for reference.
+Then restart the service:
+```bash
+sudo systemctl restart sandbox
+```
+
+> [!IMPORTANT]
+> Auth cookies require HTTPS (`secure=True` flag). The login sessions won't persist without HTTPS.
+> Point any FQDN to your server and use Caddy for automatic SSL for your domain. See example [Caddyfile](Caddyfile) for reference.
 
 ## SSH Access & Network Architecture
 

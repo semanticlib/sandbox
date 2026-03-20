@@ -101,6 +101,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-test.txt
 
+# Run in dev mode
+fastapi dev
+
+# Or run on non-default port
+fastapi dev --port 9000
+
 # Run tests
 ./scripts/test.sh
 ```

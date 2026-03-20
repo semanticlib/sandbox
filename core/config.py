@@ -66,6 +66,11 @@ class Settings:
     # Host IP for SSH jump host
     HOST_SERVER_IP: str = os.getenv("HOST_SERVER_IP", "")
 
+    # Server Configuration
+    HOST: str = os.getenv("HOST", "127.0.0.1")
+    PORT: int = int(os.getenv("PORT", "8000"))
+    WORKERS: int = int(os.getenv("WORKERS", "2"))
+
 
 # Global settings instance
 settings = Settings()

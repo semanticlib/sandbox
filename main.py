@@ -189,5 +189,10 @@ async def health_check(db=Depends(get_db)):
             health_status["status"] = "degraded"
     except Exception as e:
         health_status["checks"]["admin_user"] = {"status": "error", "message": str(e)}
-    
+
     return health_status
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)

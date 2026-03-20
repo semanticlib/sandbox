@@ -124,15 +124,6 @@
                 <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
                     <i class="bi bi-plus-circle"></i> Bulk Create
                 </button>
-                <button type="button" class="btn btn-success me-2" onclick="bulkStartSelected()">
-                    <i class="bi bi-play-circle"></i> Start Selected
-                </button>
-                <button type="button" class="btn btn-warning me-2" onclick="bulkStopSelected()">
-                    <i class="bi bi-stop-circle"></i> Stop Selected
-                </button>
-                <button type="button" class="btn btn-danger me-2" onclick="bulkDeleteSelected()">
-                    <i class="bi bi-trash"></i> Delete Selected
-                </button>
                 <div class="btn-group ms-3">
                     <button type="button" class="btn btn-outline-success" onclick="bulkStartAll()">
                         <i class="bi bi-play-fill"></i> Start All
@@ -144,9 +135,6 @@
                         <i class="bi bi-trash-fill"></i> Delete All
                     </button>
                 </div>
-            </div>
-            <div class="col-md-2 text-end">
-                <span id="selected-count" class="badge bg-secondary">0 selected</span>
             </div>
         </div>
     </div>
@@ -209,7 +197,19 @@
 <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-list-ul"></i> Instances</span>
+        <div class="d-flex d-none" id="bulk-actions">
+            <button type="button" class="btn btn-success me-2" onclick="bulkStartSelected()">
+                <i class="bi bi-play-circle"></i> Start Selected
+            </button>
+            <button type="button" class="btn btn-warning me-2" onclick="bulkStopSelected()">
+                <i class="bi bi-stop-circle"></i> Stop Selected
+            </button>
+            <button type="button" class="btn btn-danger me-2" onclick="bulkDeleteSelected()">
+                <i class="bi bi-trash"></i> Delete Selected
+            </button>
+        </div>
         <div class="d-flex">
+            <span id="selected-count" class="badge bg-secondary py-2 me-2 d-none">0 selected</span>
             <input type="text" id="search-instances" class="form-control form-control-sm me-2" 
                    placeholder="Search instances..." value="{{ search }}" 
                    style="width: 200px;">
@@ -555,5 +555,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/dashboard.js?v=5"></script>
+<script src="/static/js/dashboard.js?v=6"></script>
 {% endblock %}

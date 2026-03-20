@@ -307,6 +307,14 @@ function updateSelectedCount() {
     const allCheckboxes = document.querySelectorAll('.instance-checkbox');
     
     countElement.textContent = `${checkboxes.length} selected`;
+
+    if (checkboxes.length > 0) {
+        countElement.classList.remove('d-none');
+        document.getElementById('bulk-actions').classList.remove('d-none');
+    } else {
+        countElement.classList.add('d-none');
+        document.getElementById('bulk-actions').classList.add('d-none');
+    }
     
     // Update "select all" checkbox state
     selectAllCheckbox.checked = checkboxes.length > 0 && checkboxes.length === allCheckboxes.length;

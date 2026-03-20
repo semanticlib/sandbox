@@ -24,51 +24,6 @@ Host {vm_name}
 # --- End of config block ---
 """
 
-# Default instructions template
-DEFAULT_INSTRUCTIONS_TEMPLATE = """Welcome to the Workshop!
-
-Your personal environment is ready.
-
-== SSH Access ==
-You can connect to your instance using a standard SSH client with the provided key.
-
-{vm_ip_note}
-
-== Setup Instructions ==
-
-1. Save your private key
-   Save your private key ({private_key_filename}) to your ~/.ssh/ directory.
-   
-   Examples:
-   - Linux/Mac:  /home/{username}/.ssh/ or ~/.ssh/
-   - Windows:    C:\\Users\\YourUsername\\.ssh\\
-   
-   Set proper permissions:
-   chmod 600 ~/.ssh/{private_key_filename}
-
-2. Add SSH config to your ~/.ssh/config file
-   Copy the contents of the 'ssh-config' file and append it to:
-   ~/.ssh/config
-   
-   Make sure the config file has proper permissions:
-   chmod 600 ~/.ssh/config
-
-3. Connect to your VM by running this command in your terminal:
-   ssh {vm_name}
-
-== How It Works ==
-The SSH connection uses a jump host (your host machine) to reach the VM:
-  Your Computer → jump-host ({username}@host) → {vm_name} ({username}@vm-ip)
-
-A jump user '{username}' has been automatically created on the host system for this purpose.
-
-== Security Notes ==
-- Never share your private key with anyone
-- Keep your private key permissions restricted (chmod 600)
-- The private key is only stored locally on this machine
-- The jump user has no login shell (nologin) for security
-"""
-
 
 def auto_detect_host_ip():
     """Auto-detect the host machine's IP address on the local network."""
@@ -85,19 +40,17 @@ def auto_detect_host_ip():
         return "127.0.0.1"
 
 
-def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: str = None, 
-                            ssh_template: str = None, instructions_template: str = None,
-                            base_path: str = "_instances"):
+def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: str = None,
+                            ssh_template: str = None, base_path: str = "_instances"):
     """
-    Create SSH config and instructions files for a VM instance.
-    
+    Create SSH config files for a VM instance.
+
     Args:
         vm_name: Name of the VM instance
         ssh_keys: Dictionary containing 'private_key' and 'public_key'
         username: Username for SSH access
         vm_ip: VM's IP address (optional, will try to use .local if not available)
         ssh_template: Custom SSH config template (optional)
-        instructions_template: Custom instructions template (optional)
         base_path: Base directory for storing config files
     """
     # Import safe path function to prevent path traversal
@@ -118,14 +71,10 @@ def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: 
     
     # Use VM IP if available, otherwise use .local domain
     vm_hostname = vm_ip if vm_ip else f"{vm_name}.local"
-    
-    # VM IP note for instructions
-    vm_ip_note = f"IP Address: {vm_ip}" if vm_ip else "Note: VM IP address was not available."
-    
+
     # Use provided templates or defaults
     ssh_config_content = ssh_template if ssh_template else DEFAULT_SSH_CONFIG_TEMPLATE
-    instructions_content = instructions_template if instructions_template else DEFAULT_INSTRUCTIONS_TEMPLATE
-    
+
     # Replace placeholders in SSH config
     ssh_config_content = ssh_config_content.format(
         vm_name=vm_name,
@@ -134,26 +83,12 @@ def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: 
         private_key_filename=private_key_filename,
         vm_hostname=vm_hostname
     )
-    
-    # Replace placeholders in instructions
-    instructions_content = instructions_content.format(
-        vm_name=vm_name,
-        username=username,
-        private_key_filename=private_key_filename,
-        vm_ip_note=vm_ip_note,
-        vm_hostname=vm_hostname
-    )
-    
+
     ssh_config_path = os.path.join(instance_dir, "ssh-config")
     with open(ssh_config_path, 'w') as f:
         f.write(ssh_config_content)
-    
-    instructions_path = os.path.join(instance_dir, "instructions.txt")
-    with open(instructions_path, 'w') as f:
-        f.write(instructions_content)
-    
+
     return {
         "ssh_config_path": ssh_config_path,
-        "instructions_path": instructions_path,
         "instance_dir": instance_dir
     }

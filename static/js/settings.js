@@ -172,15 +172,13 @@ async function loadImages() {
 // Load connection templates
 async function loadConnectionTemplates() {
     const sshConfigField = document.getElementById('ssh_config_template');
-    const instructionsField = document.getElementById('instructions_template');
-    
+
     try {
         const response = await fetch('/settings/connection-templates');
         const data = await response.json();
-        
+
         if (data.success) {
             sshConfigField.value = data.ssh_config_template;
-            instructionsField.value = data.instructions_template;
         }
     } catch (error) {
         console.error('Failed to load connection templates:', error);

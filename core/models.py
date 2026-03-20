@@ -44,4 +44,3 @@ class ConnectionTemplate(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ssh_config_template = Column(Text, nullable=True)  # SSH config template with placeholders
-    instructions_template = Column(Text, nullable=True)  # Instructions template with placeholders

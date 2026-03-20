@@ -658,10 +658,10 @@ async def download_ssh_config(
     import io
     from fastapi.responses import StreamingResponse
     from services.ssh_key_service import get_instance_keys
-    from services.ssh_config_service import create_ssh_config_files, DEFAULT_SSH_CONFIG_TEMPLATE, DEFAULT_INSTRUCTIONS_TEMPLATE
+    from services.ssh_config_service import create_ssh_config_files, DEFAULT_SSH_CONFIG_TEMPLATE
     from services.jump_user_service import create_jump_user
     from core.models import ConnectionTemplate
-    
+
     # Get SSH keys
     keys = get_instance_keys(instance_name)
     if not keys:
@@ -669,16 +669,15 @@ async def download_ssh_config(
             "success": False,
             "message": "SSH keys not found for this instance"
         })
-    
+
     # Get VM settings for username
     vm_settings = db.query(VMDefaultSettings).first()
     username = vm_settings.username if vm_settings else "ubuntu"
-    
+
     # Get connection templates from DB
     templates = db.query(ConnectionTemplate).first()
     ssh_template = templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
-    instructions_template = templates.instructions_template if templates and templates.instructions_template else DEFAULT_INSTRUCTIONS_TEMPLATE
-    
+
     # Create/update jump user on host system
     jump_user_result = create_jump_user(username, keys["public_key"])
     if not jump_user_result.get("success"):
@@ -686,13 +685,13 @@ async def download_ssh_config(
             "success": False,
             "message": f"Failed to setup jump user: {jump_user_result.get('message')}"
         })
-    
+
     # Get VM IP address
     from services.lxd_service import LXDService
     lxd_service = LXDService(db)
     lxd_service.get_client()
     vm_ip = None
-    
+
     if lxd_service.is_connected():
         try:
             instance = lxd_service.client.instances.get(instance_name)
@@ -710,9 +709,9 @@ async def download_ssh_config(
                             break
         except Exception:
             pass
-    
+
     # Generate SSH config files with templates
-    create_ssh_config_files(instance_name, keys, username, vm_ip, ssh_template, instructions_template)
+    create_ssh_config_files(instance_name, keys, username, vm_ip, ssh_template)
 
     # Create zip file in memory (with path traversal protection)
     from services.ssh_key_service import _safe_instance_path
@@ -726,7 +725,7 @@ async def download_ssh_config(
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for filename in ['id_ed25519', 'ssh-config', 'instructions.txt']:
+        for filename in ['id_ed25519', 'ssh-config']:
             filepath = instance_dir / filename
             if filepath.exists():
                 zip_file.write(filepath, filename)

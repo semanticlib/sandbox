@@ -266,7 +266,7 @@
     <!-- Connection Templates Tab -->
     <div class="tab-pane fade" id="connection-templates" role="tabpanel">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-md-8">
                 <div class="card mb-4">
                     <div class="card-header">
                         <i class="bi bi-file-text"></i> SSH Connection Templates
@@ -279,23 +279,11 @@
                         {% endif %}
 
                         <form method="post" action="/settings/connection-templates">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="bi bi-file-text"></i> SSH Config Template</h6>
-                                    <div class="mb-3">
-                                        <label for="ssh_config_template" class="form-label">Default SSH Config</label>
-                                        <textarea class="form-control font-monospace" id="ssh_config_template" name="ssh_config_template" rows="12"></textarea>
-                                        <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="bi bi-journal-text"></i> Instructions Template</h6>
-                                    <div class="mb-3">
-                                        <label for="instructions_template" class="form-label">Default Instructions</label>
-                                        <textarea class="form-control font-monospace" id="instructions_template" name="instructions_template" rows="12"></textarea>
-                                        <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_ip_note}</code>, <code>{vm_hostname}</code></small>
-                                    </div>
-                                </div>
+                            <h6 class="mb-3"><i class="bi bi-file-text"></i> SSH Config Template</h6>
+                            <div class="mb-3">
+                                <label for="ssh_config_template" class="form-label">Default SSH Config</label>
+                                <textarea class="form-control font-monospace" id="ssh_config_template" name="ssh_config_template" rows="18"></textarea>
+                                <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Save Templates

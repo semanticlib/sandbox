@@ -329,16 +329,15 @@ async def get_available_images(db: Session = Depends(get_db)):
 
 @router.get("/settings/connection-templates")
 async def get_connection_templates(db: Session = Depends(get_db)):
-    """Get connection templates (SSH config and instructions)"""
+    """Get connection templates (SSH config)"""
     from core.models import ConnectionTemplate
-    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE, DEFAULT_INSTRUCTIONS_TEMPLATE
-    
+    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
+
     templates = db.query(ConnectionTemplate).first()
-    
+
     return JSONResponse({
         "success": True,
-        "ssh_config_template": templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE,
-        "instructions_template": templates.instructions_template if templates and templates.instructions_template else DEFAULT_INSTRUCTIONS_TEMPLATE
+        "ssh_config_template": templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
     })
 
 
@@ -346,24 +345,21 @@ async def get_connection_templates(db: Session = Depends(get_db)):
 async def save_connection_templates(
     request: Request,
     ssh_config_template: str = Form(...),
-    instructions_template: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """Save connection templates"""
     from core.models import ConnectionTemplate
-    
+
     templates = db.query(ConnectionTemplate).first()
-    
+
     if templates:
         templates.ssh_config_template = ssh_config_template
-        templates.instructions_template = instructions_template
     else:
         templates = ConnectionTemplate(
-            ssh_config_template=ssh_config_template,
-            instructions_template=instructions_template
+            ssh_config_template=ssh_config_template
         )
         db.add(templates)
-    
+
     db.commit()
-    
+
     return RedirectResponse(url="/settings?templates_success=Connection templates saved successfully", status_code=303)

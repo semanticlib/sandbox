@@ -12,14 +12,14 @@ DEFAULT_SSH_CONFIG_TEMPLATE = """# --- Start of config block ---
 Host jump-host
     HostName {host_ip}
     User {username}
-    IdentityFile ~/.ssh/{private_key_filename}
+    IdentityFile {private_key_filename}
     StrictHostKeyChecking no
 
 Host {vm_name}
     HostName {vm_hostname}
     User {username}
     ProxyJump jump-host
-    IdentityFile ~/.ssh/{private_key_filename}
+    IdentityFile {private_key_filename}
     StrictHostKeyChecking no
 # --- End of config block ---
 """

@@ -37,9 +37,13 @@ This step will download the `ubuntu:24.04` image. The Sandbox app will only show
 ```bash
 git clone https://github.com/semanticlib/sandbox.git
 cd sandbox
-sudo ./scripts/deploy.sh
-sudo systemctl status sandbox
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app
 ```
+
+**TODO:** Add systemd service file
 
 **Secure Access using SSH Tunnel**
 
@@ -69,12 +73,11 @@ sudo systemctl restart sandbox
 
 ### Create additional admin account
 
-The first admin account is created during deployment. If you need to create a new admin account, you can use the following command:
+The first admin account is created during initialization. If you need to create a new admin account, you can use the following command:
 
 ```bash
-sudo /opt/sandbox/scripts/create_admin.py
+sudo ./scripts/create_admin.py
 ```
-
 
 ## SSH Access & Network Architecture
 

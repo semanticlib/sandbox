@@ -37,6 +37,8 @@ jobs:
         cp env.example .env
         echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
         echo "SECRET_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
+        # Use local database for CI (not /var/lib/sandbox which requires root)
+        echo "DATABASE_URL=sqlite:///./test.db" >> .env
         
     - name: Run tests
       run: |
@@ -53,4 +55,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
-        path: htmlcov/
+        path: coverage.xml

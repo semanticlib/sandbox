@@ -1,5 +1,8 @@
 # Sandbox Manager
 
+![Tests](https://github.com/semanticlib/sandbox/actions/workflows/test.yml/badge.svg)
+
+
 A web-based interface for managing LXD virtual machines and containers. Designed for classrooms and workshops where you need to quickly create identical VMs for participants and clean them up afterwards.
 
 ![Dashboard](screenshots/dashboard.png)

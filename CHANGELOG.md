@@ -19,16 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Command injection vulnerability in jump user service
 - Path traversal in SSH key file operations
-- Missing authentication on bulk operation endpoints
-- Cookie expiration mismatch (now 1 hour)
 
 ### Security
 - Added password strength requirements (8+ chars, mixed case, numbers, special chars)
 - Rate limiting on login and setup endpoints
-- Secure cookie flag for HTTPS
-- Input validation on all user-provided data
 
-## [0.1.0] - 2025-01-01
+## [0.1.0] - 2026-03-23
 
 ### Added
 - Initial release

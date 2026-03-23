@@ -51,7 +51,6 @@ def create_admin(username: str, password: str):
         db.commit()
         
         print(f"\n✅ Admin user '{username}' created successfully!")
-        print(f"   You can now login at: http://localhost:8000/login")
         return True
         
     except Exception as e:

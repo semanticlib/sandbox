@@ -18,7 +18,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/sandbox/_instances /opt/sandbox/static
+ReadWritePaths=/opt/sandbox/_instances /opt/sandbox/static /var/lib/sandbox
 
 # Environment file (contains SECRET_KEY and other settings)
 EnvironmentFile=/etc/sandbox/.env

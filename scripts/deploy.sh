@@ -29,6 +29,7 @@ mkdir -p "$APP_DIR"
 mkdir -p "$ENV_DIR"
 mkdir -p "$APP_DIR/_instances"
 mkdir -p "$APP_DIR/static"
+mkdir -p "/var/lib/$APP_NAME"
 
 # Copy application files
 echo "Copying application files..."
@@ -37,6 +38,7 @@ cp -r ./* "$APP_DIR/"
 # Set ownership
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 chown -R "$APP_USER:$APP_USER" "$ENV_DIR"
+chown -R "$APP_USER:$APP_USER" "/var/lib/$APP_NAME"
 
 # Copy environment file
 if [ ! -f "$ENV_DIR/.env" ]; then

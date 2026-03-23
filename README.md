@@ -40,6 +40,10 @@ cd sandbox
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp env.example .env
+SECRET_KEY=$(openssl rand -hex 32)
+sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" .env
+# Update the LXD Host IP in HOST_SERVER_IP variable in .env file
 uvicorn main:app
 ```
 
@@ -55,14 +59,9 @@ Open `http://localhost:8000` in your browser
 
 **Custom Port:**
 
-To use a different port, set `PORT` in `/etc/sandbox/.env`:
+To use a different port, set `PORT` in `.env`:
 ```bash
 PORT=9000
-```
-
-Then restart the service:
-```bash
-sudo systemctl restart sandbox
 ```
 
 > [!IMPORTANT]

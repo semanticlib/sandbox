@@ -43,8 +43,6 @@ pip install -r requirements.txt
 uvicorn main:app
 ```
 
-**TODO:** Add systemd service file
-
 **Secure Access using SSH Tunnel**
 
 Create an SSH Tunnel to access the app.
@@ -92,7 +90,7 @@ The Sandbox Manager uses **SSH ProxyJump** to provide secure access to guest VMs
 1. The SSH connection jumps through the host machine to reach the guest VM
 2. The Sandbox Manager **automatically generates unique SSH key pairs** for each VM user
 
-A zip file is available for download from the web interface. The zip file contains:
+A zip file is available for download for each VM, only after the VM IP is assigned. The zip file contains:
 
 1. **Private key** - Ed25519 private key
 2. **SSH config template** - Pre-configured SSH config with all connection details, including the ProxyJump

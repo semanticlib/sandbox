@@ -142,7 +142,7 @@ class InstanceTaskService:
 
                 if instance_type == "virtual-machine":
                     # Create VM using API directly (virtual_machines.create() has issues with image type)
-                    creation_tasks[task_id]["message"] = "Creating virtual machine (downloading image if needed)..."
+                    creation_tasks[task_id]["message"] = "Creating virtual machine..."
                     vm_config = {
                         "limits.cpu": str(cpu),
                         "limits.memory": f"{ram}GiB",
@@ -199,7 +199,7 @@ class InstanceTaskService:
                         creation_tasks[task_id]["progress"] = min(60 + int(progress * 0.3), 90)
                 else:
                     # Create container
-                    creation_tasks[task_id]["message"] = "Creating container (downloading image if needed)..."
+                    creation_tasks[task_id]["message"] = "Creating container..."
                     container_config = {
                         "limits.cpu": str(cpu),
                         "limits.memory": f"{ram}GiB",

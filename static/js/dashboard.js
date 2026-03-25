@@ -1,6 +1,73 @@
 // Instance creation with progress tracking
 let createPollingInterval = null;
 
+// ============== LXD Profile Picker ==============
+
+let _profileCache = null;  // { name -> { cpu, memory, disk, has_cloud_init } }
+
+async function loadProfiles() {
+    try {
+        const res = await fetch('/api/lxd/profiles');
+        const data = await res.json();
+        if (!data.success || !data.profiles.length) return;
+
+        _profileCache = {};
+        data.profiles.forEach(p => { _profileCache[p.name] = p; });
+
+        const selectors = [
+            document.getElementById('instance_profile'),
+            document.getElementById('bulk_profile'),
+        ];
+
+        selectors.forEach(sel => {
+            if (!sel) return;
+            // Keep the "— manual —" placeholder, clear the rest
+            while (sel.options.length > 1) sel.remove(1);
+            data.profiles.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                const cpuLabel  = p.cpu    ? `${p.cpu}c`    : '';
+                const ramLabel  = p.memory ? `${p.memory}G` : '';
+                const diskLabel = p.disk   ? `${p.disk}G`   : '';
+                const specs = [cpuLabel, ramLabel, diskLabel].filter(Boolean).join(' / ');
+                opt.textContent = specs ? `${p.name}  (${specs})` : p.name;
+                if (p.has_cloud_init) opt.textContent += '  ☁';
+                sel.appendChild(opt);
+            });
+        });
+    } catch(e) {
+        console.warn('Could not load LXD profiles:', e.message);
+    }
+}
+
+/**
+ * Apply selected profile defaults to form fields.
+ * @param {'instance'|'bulk'} context
+ */
+function applyProfile(context) {
+    if (!_profileCache) return;
+
+    const prefix = context === 'bulk' ? 'bulk' : 'instance';
+    const selEl = document.getElementById(
+        context === 'bulk' ? 'bulk_profile' : 'instance_profile'
+    );
+    if (!selEl) return;
+
+    const profileName = selEl.value;
+    if (!profileName) return;  // "— manual —" selected, leave fields as-is
+
+    const p = _profileCache[profileName];
+    if (!p) return;
+
+    const cpuEl  = document.getElementById(prefix === 'bulk' ? 'bulk_cpu'  : 'instance_cpu');
+    const ramEl  = document.getElementById(prefix === 'bulk' ? 'bulk_ram'  : 'instance_ram');
+    const diskEl = document.getElementById(prefix === 'bulk' ? 'bulk_disk' : 'instance_disk');
+
+    if (p.cpu    != null && cpuEl)  cpuEl.value  = p.cpu;
+    if (p.memory != null && ramEl)  ramEl.value  = p.memory;
+    if (p.disk   != null && diskEl) diskEl.value = p.disk;
+}
+
 // Live search for instances table
 function initLiveSearch() {
     const searchInput = document.getElementById('search-instances');
@@ -73,6 +140,7 @@ function initLiveSearch() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initLiveSearch();
+    loadProfiles();
     const form = document.getElementById('create-instance-form');
     if (form) {
         form.addEventListener('submit', async function(e) {

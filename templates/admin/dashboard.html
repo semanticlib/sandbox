@@ -148,31 +148,37 @@
                 <input type="text" class="form-control" id="instance_name" name="name" placeholder="my-vm" required>
             </div>
             <div class="col-md-2">
-                <label for="instance_cpu" class="form-label">CPU (cores)</label>
-                <input type="number" class="form-control" id="instance_cpu" name="cpu"
-                       value="{{ vm_defaults.cpu if vm_defaults else 2 }}"
-                       min="1" max="32" required>
-            </div>
-            <div class="col-md-2">
-                <label for="instance_ram" class="form-label">RAM (GiB)</label>
-                <input type="number" class="form-control" id="instance_ram" name="ram"
-                       value="{{ vm_defaults.memory if vm_defaults else 4 }}"
-                       min="1" max="128" required>
-            </div>
-            <div class="col-md-2">
-                <label for="instance_disk" class="form-label">Disk (GiB)</label>
-                <input type="number" class="form-control" id="instance_disk" name="disk"
-                       value="{{ vm_defaults.disk if vm_defaults else 20 }}"
-                       min="5" max="500" required>
-            </div>
-            <div class="col-md-2">
                 <label for="instance_type" class="form-label">Type</label>
                 <select class="form-select" id="instance_type" name="type">
                     <option value="container">Container</option>
                     <option value="virtual-machine">VM</option>
                 </select>
             </div>
+            <div class="col-md-2">
+                <label for="instance_profile" class="form-label">Profile <small class="text-muted">(optional)</small></label>
+                <select class="form-select" id="instance_profile" onchange="applyProfile('instance')">
+                    <option value="">— manual —</option>
+                </select>
+            </div>
             <div class="col-md-1">
+                <label for="instance_cpu" class="form-label">CPU</label>
+                <input type="number" class="form-control" id="instance_cpu" name="cpu"
+                       value="{{ vm_defaults.cpu if vm_defaults else 2 }}"
+                       min="1" max="32" required>
+            </div>
+            <div class="col-md-1">
+                <label for="instance_ram" class="form-label">RAM (GiB)</label>
+                <input type="number" class="form-control" id="instance_ram" name="ram"
+                       value="{{ vm_defaults.memory if vm_defaults else 4 }}"
+                       min="1" max="128" required>
+            </div>
+            <div class="col-md-1">
+                <label for="instance_disk" class="form-label">Disk (GiB)</label>
+                <input type="number" class="form-control" id="instance_disk" name="disk"
+                       value="{{ vm_defaults.disk if vm_defaults else 20 }}"
+                       min="5" max="500" required>
+            </div>
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="bi bi-plus-lg"></i> Create
                 </button>
@@ -483,6 +489,12 @@
                             <code>test-{a-c}</code> → test-a, test-b, test-c
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label for="bulk_profile" class="form-label">Profile <small class="text-muted">(optional — overrides CPU/RAM/Disk below)</small></label>
+                        <select class="form-select" id="bulk_profile" onchange="applyProfile('bulk')">
+                            <option value="">— manual —</option>
+                        </select>
+                    </div>
                     <div class="row">
                         <div class="col-md-3 mb-3">
                             <label for="bulk_cpu" class="form-label">CPU (cores)</label>
@@ -552,7 +564,7 @@
 
 {% block extra_js %}
 <script src="/static/js/vm-support.js?v=1" type="module"></script>
-<script src="/static/js/dashboard.js?v=6"></script>
+<script src="/static/js/dashboard.js?v=7"></script>
 <script type="module">
     import { disableVMOptionsIfUnsupported } from '/static/js/vm-support.js';
     

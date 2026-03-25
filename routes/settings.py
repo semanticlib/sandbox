@@ -412,6 +412,76 @@ async def get_available_images(
         })
 
 
+@router.get("/settings/vm/template")
+async def get_vm_cloud_init_template():
+    """Return the default cloud-init template text."""
+    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE
+    return JSONResponse({"success": True, "template": DEFAULT_CLOUD_INIT_TEMPLATE})
+
+
+@router.get("/api/lxd/profiles")
+async def get_lxd_profiles(db: Session = Depends(get_db)):
+    """Return all LXD profiles with parsed resource defaults."""
+    import re
+    from services.lxd_service import LXDService
+
+    lxd_service = LXDService(db)
+    lxd_service.get_client()
+
+    if not lxd_service.is_connected():
+        return JSONResponse({"success": False, "message": "LXD not connected"})
+
+    def _parse_size_gib(value: str) -> int | None:
+        """Convert LXD size string like '4GiB', '4096MiB', '2GB' to integer GiB."""
+        if not value:
+            return None
+        value = value.strip()
+        m = re.match(r'^(\d+(?:\.\d+)?)\s*(GiB|GB|MiB|MB|KiB|KB)?$', value, re.IGNORECASE)
+        if not m:
+            return None
+        num, unit = float(m.group(1)), (m.group(2) or 'GiB').upper()
+        if unit in ('MIB', 'MB'):
+            return max(1, round(num / 1024))
+        if unit in ('KIB', 'KB'):
+            return max(1, round(num / (1024 * 1024)))
+        return round(num)  # GiB / GB
+
+    try:
+        profiles = []
+        for profile in lxd_service.client.profiles.all():
+            cfg = profile.config or {}
+            devices = profile.devices or {}
+
+            # Parse CPU
+            cpu_raw = cfg.get("limits.cpu")
+            cpu = int(cpu_raw) if cpu_raw and cpu_raw.isdigit() else None
+
+            # Parse memory
+            memory = _parse_size_gib(cfg.get("limits.memory"))
+
+            # Parse disk from root device
+            root_dev = devices.get("root", {})
+            disk = _parse_size_gib(root_dev.get("size"))
+
+            # Cloud-init template presence
+            has_cloud_init = bool(cfg.get("user.user-data"))
+
+            profiles.append({
+                "name": profile.name,
+                "description": profile.description or "",
+                "cpu": cpu,
+                "memory": memory,
+                "disk": disk,
+                "has_cloud_init": has_cloud_init,
+            })
+
+        return JSONResponse({"success": True, "profiles": profiles})
+    except Exception:
+        import logging
+        logging.exception("Error fetching LXD profiles")
+        return JSONResponse({"success": False, "message": "Failed to fetch profiles"})
+
+
 @router.get("/settings/connection-templates")
 async def get_connection_templates(db: Session = Depends(get_db)):
     """Get connection templates (SSH config)"""
@@ -448,3 +518,163 @@ async def save_connection_templates(
     db.commit()
 
     return RedirectResponse(url="/settings?templates_success=Connection templates saved successfully", status_code=303)
+
+
+# ============================================================
+# LXD Profile CRUD  (JSON API)
+# ============================================================
+
+def _lxd_service_connected(db) -> LXDService | None:
+    """Return a connected LXDService or None."""
+    svc = LXDService(db)
+    svc.get_client()
+    return svc if svc.is_connected() else None
+
+
+def _parse_size_gib_shared(value: str):
+    """Convert LXD size string (4GiB, 4096MiB …) to integer GiB. Returns None if unparseable."""
+    import re
+    if not value:
+        return None
+    m = re.match(r'^(\d+(?:\.\d+)?)\s*(GiB|GB|MiB|MB|KiB|KB)?$', value.strip(), re.IGNORECASE)
+    if not m:
+        return None
+    num, unit = float(m.group(1)), (m.group(2) or 'GiB').upper()
+    if unit in ('MIB', 'MB'):
+        return max(1, round(num / 1024))
+    if unit in ('KIB', 'KB'):
+        return max(1, round(num / (1024 * 1024)))
+    return round(num)
+
+
+def _profile_to_dict(profile) -> dict:
+    """Serialize a pylxd Profile object to a JSON-friendly dict."""
+    cfg = profile.config or {}
+    devices = profile.devices or {}
+    root_dev = devices.get("root", {})
+    cpu_raw = cfg.get("limits.cpu")
+    return {
+        "name": profile.name,
+        "description": profile.description or "",
+        "cpu": int(cpu_raw) if cpu_raw and cpu_raw.isdigit() else None,
+        "memory": _parse_size_gib_shared(cfg.get("limits.memory")),
+        "disk": _parse_size_gib_shared(root_dev.get("size")),
+        "cloud_init": cfg.get("user.user-data") or "",
+    }
+
+
+@router.get("/api/lxd/profiles/{name}")
+async def get_lxd_profile(name: str, db: Session = Depends(get_db)):
+    """Return full details of a single LXD profile."""
+    svc = _lxd_service_connected(db)
+    if not svc:
+        return JSONResponse({"success": False, "message": "LXD not connected"})
+    try:
+        profile = svc.client.profiles.get(name)
+        return JSONResponse({"success": True, "profile": _profile_to_dict(profile)})
+    except Exception:
+        return JSONResponse({"success": False, "message": f"Profile '{name}' not found"}, status_code=404)
+
+
+@router.post("/api/lxd/profiles")
+async def create_lxd_profile(request: Request, db: Session = Depends(get_db)):
+    """Create a new LXD profile."""
+    svc = _lxd_service_connected(db)
+    if not svc:
+        return JSONResponse({"success": False, "message": "LXD not connected"})
+    try:
+        data = await request.json()
+        name = (data.get("name") or "").strip()
+        if not name:
+            return JSONResponse({"success": False, "message": "Profile name is required"})
+
+        config = {}
+        devices = {}
+        if data.get("cpu"):
+            config["limits.cpu"] = str(int(data["cpu"]))
+        if data.get("memory"):
+            config["limits.memory"] = f"{int(data['memory'])}GiB"
+        if data.get("cloud_init"):
+            config["user.user-data"] = data["cloud_init"]
+        if data.get("disk"):
+            devices["root"] = {
+                "type": "disk",
+                "path": "/",
+                "pool": "default",
+                "size": f"{int(data['disk'])}GiB",
+            }
+
+        profile = svc.client.profiles.create(
+            name=name,
+            description=data.get("description", ""),
+            config=config,
+            devices=devices,
+        )
+        return JSONResponse({"success": True, "profile": _profile_to_dict(profile)})
+    except Exception as exc:
+        import logging
+        logging.exception("Error creating LXD profile")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+@router.put("/api/lxd/profiles/{name}")
+async def update_lxd_profile(name: str, request: Request, db: Session = Depends(get_db)):
+    """Update an existing LXD profile's resource limits and cloud-init."""
+    svc = _lxd_service_connected(db)
+    if not svc:
+        return JSONResponse({"success": False, "message": "LXD not connected"})
+    try:
+        profile = svc.client.profiles.get(name)
+        data = await request.json()
+
+        cfg = dict(profile.config or {})
+        devices = dict(profile.devices or {})
+
+        # Update limits
+        if data.get("cpu") is not None:
+            cfg["limits.cpu"] = str(int(data["cpu"]))
+        if data.get("memory") is not None:
+            cfg["limits.memory"] = f"{int(data['memory'])}GiB"
+        if "cloud_init" in data:
+            if data["cloud_init"]:
+                cfg["user.user-data"] = data["cloud_init"]
+            else:
+                cfg.pop("user.user-data", None)
+
+        # Update root disk device
+        if data.get("disk") is not None:
+            root = dict(devices.get("root", {
+                "type": "disk", "path": "/", "pool": "default"
+            }))
+            root["size"] = f"{int(data['disk'])}GiB"
+            devices["root"] = root
+
+        profile.config = cfg
+        profile.devices = devices
+        if "description" in data:
+            profile.description = data["description"]
+        profile.save()
+
+        return JSONResponse({"success": True, "profile": _profile_to_dict(profile)})
+    except Exception as exc:
+        import logging
+        logging.exception("Error updating LXD profile")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+@router.delete("/api/lxd/profiles/{name}")
+async def delete_lxd_profile(name: str, db: Session = Depends(get_db)):
+    """Delete an LXD profile (cannot delete profiles in use)."""
+    if name == "default":
+        return JSONResponse({"success": False, "message": "Cannot delete the 'default' profile"})
+    svc = _lxd_service_connected(db)
+    if not svc:
+        return JSONResponse({"success": False, "message": "LXD not connected"})
+    try:
+        profile = svc.client.profiles.get(name)
+        profile.delete()
+        return JSONResponse({"success": True, "message": f"Profile '{name}' deleted"})
+    except Exception as exc:
+        import logging
+        logging.exception("Error deleting LXD profile")
+        return JSONResponse({"success": False, "message": str(exc)})

@@ -360,3 +360,228 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+
+// ============================================================
+// LXD Profile Management
+// ============================================================
+
+let _currentProfileName = null;
+let _profilesLoaded = false;
+
+async function loadProfilesTab() {
+    _profilesLoaded = true;
+    const loading = document.getElementById('profile-list-loading');
+    const list    = document.getElementById('profile-list');
+
+    loading.style.display = 'block';
+    list.style.display    = 'none';
+    list.innerHTML        = '';
+
+    try {
+        const res  = await fetch('/api/lxd/profiles');
+        const data = await res.json();
+
+        loading.style.display = 'none';
+
+        if (!data.success) {
+            list.style.display = 'block';
+            list.innerHTML = `<li class="list-group-item text-danger"><i class="bi bi-x-circle"></i> ${data.message}</li>`;
+            return;
+        }
+
+        if (!data.profiles.length) {
+            list.style.display = 'block';
+            list.innerHTML = '<li class="list-group-item text-muted">No profiles found</li>';
+            return;
+        }
+
+        data.profiles.forEach(p => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            li.dataset.name = p.name;
+            li.style.cursor = 'pointer';
+
+            const specs = [
+                p.cpu    ? `${p.cpu}c`    : null,
+                p.memory ? `${p.memory}G` : null,
+                p.disk   ? `${p.disk}G`   : null,
+            ].filter(Boolean).join(' / ');
+
+            li.innerHTML = `
+                <div>
+                    <strong>${p.name}</strong>
+                    ${p.description ? `<br><small class="text-muted">${p.description}</small>` : ''}
+                </div>
+                <span class="text-muted small">${specs}${p.has_cloud_init ? ' ☁' : ''}</span>`;
+            li.addEventListener('click', () => selectProfile(p.name));
+            list.appendChild(li);
+        });
+
+        list.style.display = 'block';
+    } catch (err) {
+        loading.style.display = 'none';
+        list.style.display    = 'block';
+        list.innerHTML = `<li class="list-group-item text-danger"><i class="bi bi-x-circle"></i> ${err.message}</li>`;
+    }
+}
+
+async function selectProfile(name) {
+    // Highlight in list
+    document.querySelectorAll('#profile-list .list-group-item').forEach(li => {
+        li.classList.toggle('active', li.dataset.name === name);
+    });
+
+    _currentProfileName = name;
+    hideNewProfileForm();
+
+    // Show edit card, hide placeholder
+    document.getElementById('profile-placeholder').style.display  = 'none';
+    document.getElementById('profile-edit-card').style.display    = 'block';
+    document.getElementById('profile-edit-name').textContent      = name;
+    document.getElementById('profile-alert').style.display        = 'none';
+
+    // Disable delete button for 'default'
+    document.getElementById('profile-delete-btn').disabled = (name === 'default');
+
+    // Fetch full profile details (includes cloud-init text)
+    try {
+        const res  = await fetch(`/api/lxd/profiles/${encodeURIComponent(name)}`);
+        const data = await res.json();
+        if (!data.success) { showProfileAlert('danger', data.message); return; }
+        const p = data.profile;
+        document.getElementById('pe-description').value = p.description || '';
+        document.getElementById('pe-cpu').value          = p.cpu    ?? '';
+        document.getElementById('pe-memory').value       = p.memory ?? '';
+        document.getElementById('pe-disk').value         = p.disk   ?? '';
+        document.getElementById('pe-cloud-init').value   = p.cloud_init || '';
+    } catch (err) {
+        showProfileAlert('danger', `Failed to load profile: ${err.message}`);
+    }
+}
+
+async function saveProfile() {
+    if (!_currentProfileName) return;
+    const payload = {
+        description: document.getElementById('pe-description').value,
+        cpu:         parseInt(document.getElementById('pe-cpu').value)    || null,
+        memory:      parseInt(document.getElementById('pe-memory').value) || null,
+        disk:        parseInt(document.getElementById('pe-disk').value)   || null,
+        cloud_init:  document.getElementById('pe-cloud-init').value,
+    };
+
+    try {
+        const res  = await fetch(`/api/lxd/profiles/${encodeURIComponent(_currentProfileName)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showProfileAlert('success', `Profile '${_currentProfileName}' saved.`);
+            loadProfilesTab();          // refresh list badges
+        } else {
+            showProfileAlert('danger', data.message);
+        }
+    } catch (err) {
+        showProfileAlert('danger', err.message);
+    }
+}
+
+async function createProfile() {
+    const name = document.getElementById('pn-name').value.trim();
+    if (!name) { showProfileAlert('danger', 'Profile name is required.'); return; }
+
+    const payload = {
+        name,
+        description: document.getElementById('pn-description').value,
+        cpu:         parseInt(document.getElementById('pn-cpu').value)    || null,
+        memory:      parseInt(document.getElementById('pn-memory').value) || null,
+        disk:        parseInt(document.getElementById('pn-disk').value)   || null,
+        cloud_init:  document.getElementById('pn-cloud-init').value,
+    };
+
+    try {
+        const res  = await fetch('/api/lxd/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showProfileAlert('success', `Profile '${name}' created.`);
+            hideNewProfileForm();
+            _profilesLoaded = false;
+            loadProfilesTab();
+        } else {
+            showProfileAlert('danger', data.message);
+        }
+    } catch (err) {
+        showProfileAlert('danger', err.message);
+    }
+}
+
+async function deleteProfile() {
+    if (!_currentProfileName || _currentProfileName === 'default') return;
+    if (!confirm(`Delete profile '${_currentProfileName}'? This cannot be undone.`)) return;
+
+    try {
+        const res  = await fetch(`/api/lxd/profiles/${encodeURIComponent(_currentProfileName)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+            _currentProfileName = null;
+            document.getElementById('profile-edit-card').style.display = 'none';
+            document.getElementById('profile-placeholder').style.display = 'block';
+            showProfileAlert('success', data.message);
+            _profilesLoaded = false;
+            loadProfilesTab();
+        } else {
+            showProfileAlert('danger', data.message);
+        }
+    } catch (err) {
+        showProfileAlert('danger', err.message);
+    }
+}
+
+function showNewProfileForm() {
+    document.getElementById('profile-new-card').style.display  = 'block';
+    document.getElementById('profile-edit-card').style.display = 'none';
+    document.getElementById('profile-placeholder').style.display = 'none';
+    document.getElementById('profile-alert').style.display     = 'none';
+    // Clear fields
+    ['pn-name','pn-description','pn-cpu','pn-memory','pn-disk','pn-cloud-init']
+        .forEach(id => { document.getElementById(id).value = ''; });
+    // Deselect list item
+    document.querySelectorAll('#profile-list .active').forEach(li => li.classList.remove('active'));
+    _currentProfileName = null;
+}
+
+function hideNewProfileForm() {
+    document.getElementById('profile-new-card').style.display = 'none';
+    if (!_currentProfileName) {
+        document.getElementById('profile-placeholder').style.display = 'block';
+    }
+}
+
+async function loadDefaultCloudInit(targetId) {
+    try {
+        const res  = await fetch('/settings/vm/template');
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById(targetId).value = data.template;
+        }
+    } catch (err) {
+        console.error('Failed to load default cloud-init:', err);
+    }
+}
+
+function showProfileAlert(type, message) {
+    const el = document.getElementById('profile-alert');
+    el.style.display = 'block';
+    el.innerHTML = `<div class="alert alert-${type} alert-dismissible mb-3">
+        <i class="bi bi-${type === 'success' ? 'check-circle' : 'x-circle'}"></i> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.parentElement.style.display='none'"></button>
+    </div>`;
+}

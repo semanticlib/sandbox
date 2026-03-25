@@ -479,5 +479,12 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/vm-support.js?v=1" type="module"></script>
 <script src="/static/js/settings.js?v=3"></script>
+<script type="module">
+    import { disableVMOptionsIfUnsupported } from '/static/js/vm-support.js';
+    
+    // Check VM support and disable options if not supported
+    disableVMOptionsIfUnsupported();
+</script>
 {% endblock %}

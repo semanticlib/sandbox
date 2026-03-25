@@ -1,7 +1,7 @@
 """Dashboard routes"""
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -114,3 +114,16 @@ async def dashboard(
         "disk_total": metrics["disk_total"],
         "disk_percent": metrics["disk_percent"]
     })
+
+
+@router.get("/api/vm-support")
+async def check_vm_support():
+    """
+    Check if the system supports LXD virtual machines.
+    
+    Returns virtualization support status for UI to enable/disable VM options.
+    """
+    from utils.virtualization import check_lxd_vm_support
+    
+    result = check_lxd_vm_support()
+    return JSONResponse(result)

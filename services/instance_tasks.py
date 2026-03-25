@@ -139,99 +139,68 @@ class InstanceTaskService:
                             "alias": "24.04"
                         }
 
-                if instance_type == "virtual-machine":
-                    # Create VM using API directly (virtual_machines.create() has issues with image type)
-                    creation_tasks[task_id]["message"] = "Creating virtual machine..."
-                    vm_config = {
-                        "limits.cpu": str(cpu),
-                        "limits.memory": f"{ram}GiB",
-                    }
+                # Determine instance type label for messaging
+                is_vm = instance_type == "virtual-machine"
+                type_label = "virtual machine" if is_vm else "container"
+                creation_tasks[task_id]["message"] = f"Creating {type_label}..."
 
-                    # Add cloud-init user-data if provided
-                    if cloud_init:
-                        # Use generated SSH public key if available, otherwise use template as-is
-                        if ssh_keys and ssh_keys.get("public_key"):
-                            vm_config["user.user-data"] = get_cloud_init_template(
-                                cloud_init, 
-                                ssh_keys["public_key"],
-                                vm_swap,
-                                vm_username
-                            )
-                        else:
-                            vm_config["user.user-data"] = cloud_init
-                    
-                    vm_devices = {
-                        "root": {
-                            "type": "disk",
-                            "path": "/",
-                            "pool": "default",
-                            "size": f"{disk}GiB"
-                        }
+                # Build config
+                instance_config = {
+                    "limits.cpu": str(cpu),
+                    "limits.memory": f"{ram}GiB",
+                }
+
+                # Add cloud-init user-data if provided (shared logic)
+                if cloud_init:
+                    if ssh_keys and ssh_keys.get("public_key"):
+                        instance_config["user.user-data"] = get_cloud_init_template(
+                            cloud_init,
+                            ssh_keys["public_key"],
+                            vm_swap,
+                            vm_username
+                        )
+                    else:
+                        instance_config["user.user-data"] = cloud_init
+
+                # Build devices (shared structure)
+                instance_devices = {
+                    "root": {
+                        "type": "disk",
+                        "path": "/",
+                        "pool": "default",
+                        "size": f"{disk}GiB"
                     }
-                    # Create VM with explicit type field
-                    config_data = {
-                        "name": name,
-                        "source": image_source,
-                        "config": vm_config,
-                        "devices": vm_devices,
-                        "type": "virtual-machine"
-                    }
-                    # Use API directly
+                }
+
+                # Build base config payload
+                config_data = {
+                    "name": name,
+                    "source": image_source,
+                    "config": instance_config,
+                    "devices": instance_devices,
+                }
+
+                # Create instance — VMs need explicit type and raw API call due to client bug
+                if is_vm:
+                    config_data["type"] = "virtual-machine"
                     response = client.api.instances.post(json=config_data)
                     operation_id = response.json()["operation"].split("/")[-1]
 
-                    # Wait for operation to complete
                     while True:
                         op = client.operations.get(operation_id)
                         if op.status_code == 200:
                             break
                         time.sleep(1)
-                        # Safely get progress from metadata
                         progress = 0
                         if op.metadata:
                             progress_val = op.metadata.get("progress", 0)
-                            # Progress can be a dict or a number
                             if isinstance(progress_val, dict):
                                 progress = progress_val.get("progress", 0)
                             elif isinstance(progress_val, (int, float)):
                                 progress = progress_val
                         creation_tasks[task_id]["progress"] = min(60 + int(progress * 0.3), 90)
                 else:
-                    # Create container
-                    creation_tasks[task_id]["message"] = "Creating container..."
-                    container_config = {
-                        "limits.cpu": str(cpu),
-                        "limits.memory": f"{ram}GiB",
-                    }
-
-                    # Add cloud-init user-data if provided
-                    if cloud_init:
-                        # Use generated SSH public key if available, otherwise use template as-is
-                        if ssh_keys and ssh_keys.get("public_key"):
-                            container_config["user.user-data"] = get_cloud_init_template(
-                                cloud_init, 
-                                ssh_keys["public_key"],
-                                vm_swap,
-                                vm_username
-                            )
-                        else:
-                            container_config["user.user-data"] = cloud_init
-
-                    container_devices = {
-                        "root": {
-                            "type": "disk",
-                            "path": "/",
-                            "pool": "default",
-                            "size": f"{disk}GiB"
-                        }
-                    }
-                    config_data = {
-                        "name": name,
-                        "source": image_source,
-                        "config": container_config,
-                        "devices": container_devices
-                    }
-                    container = client.containers.create(config_data, wait=True)
+                    client.containers.create(config_data, wait=True)
 
                 creation_tasks[task_id]["progress"] = 90
                 creation_tasks[task_id]["message"] = "Finalizing instance..."

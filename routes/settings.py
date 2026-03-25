@@ -290,7 +290,23 @@ async def get_available_images(db: Session = Depends(get_db)):
         for img in lxd_service.client.images.all():
             # Get image info
             description = img.properties.get('description', 'Unknown')
-            aliases = [alias.name for alias in img.aliases]
+            
+            # Handle aliases which can be dicts or objects
+            aliases = []
+            for a in img.aliases:
+                if isinstance(a, dict):
+                    name = a.get('name')
+                else:
+                    name = getattr(a, 'name', None)
+                if name:
+                    aliases.append(name)
+            
+            # Fallback for empty aliases: first 3 words of description
+            if not aliases and description and description != 'Unknown':
+                words = description.split()
+                fallback = " ".join(words[:3])
+                if fallback:
+                    aliases = [fallback]
             
             # Handle created_at which might be datetime or string
             created_at = None

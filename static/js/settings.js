@@ -140,7 +140,7 @@ async function loadImages() {
                 const aliasText = img.aliases.length > 0 ? ` (${img.aliases.join(', ')})` : '';
                 const option = document.createElement('option');
                 option.value = img.fingerprint;
-                option.textContent = `${img.description}${aliasText}`;
+                option.textContent = `${img.type} - ${img.description}${aliasText}`;
                 option.dataset.fullFingerprint = img.full_fingerprint;
                 option.dataset.alias = img.aliases.length > 0 ? img.aliases[0] : '';
                 option.dataset.description = img.description;

@@ -120,22 +120,22 @@ async function loadCloudInitTemplate() {
 }
 
 // Load available LXD images
-async function loadImages() {
+async function loadImages(instanceType = 'virtual-machine') {
     const select = document.getElementById('image_select');
     const descField = document.getElementById('image_description');
     const fpField = document.getElementById('image_fingerprint');
     const aliasField = document.getElementById('image_alias');
-    
+
     select.disabled = true;
     select.innerHTML = '<option>Loading...</option>';
-    
+
     try {
-        const response = await fetch('/settings/vm/images');
+        const response = await fetch(`/settings/vm/images?instance_type=${instanceType}`);
         const data = await response.json();
-        
+
         if (data.success && data.images.length > 0) {
             select.innerHTML = '<option value="">-- Select an image --</option>';
-            
+
             data.images.forEach(img => {
                 const aliasText = img.aliases.length > 0 ? ` (${img.aliases.join(', ')})` : '';
                 const option = document.createElement('option');
@@ -146,7 +146,7 @@ async function loadImages() {
                 option.dataset.description = img.description;
                 select.appendChild(option);
             });
-            
+
             // Restore previously selected image
             if (fpField.value) {
                 for (let opt of select.options) {
@@ -166,6 +166,78 @@ async function loadImages() {
         console.error('Failed to load images:', error);
     } finally {
         select.disabled = false;
+    }
+}
+
+// Load available LXD container images
+async function loadContainerImages() {
+    const select = document.getElementById('container_image_select');
+    const descField = document.getElementById('container_image_description');
+    const fpField = document.getElementById('container_image_fingerprint');
+    const aliasField = document.getElementById('container_image_alias');
+
+    select.disabled = true;
+    select.innerHTML = '<option>Loading...</option>';
+
+    try {
+        const response = await fetch('/settings/vm/images?instance_type=container');
+        const data = await response.json();
+
+        if (data.success && data.images.length > 0) {
+            select.innerHTML = '<option value="">-- Select an image --</option>';
+
+            data.images.forEach(img => {
+                const aliasText = img.aliases.length > 0 ? ` (${img.aliases.join(', ')})` : '';
+                const option = document.createElement('option');
+                option.value = img.fingerprint;
+                option.textContent = `${img.description}${aliasText}`;
+                option.dataset.fullFingerprint = img.full_fingerprint;
+                option.dataset.alias = img.aliases.length > 0 ? img.aliases[0] : '';
+                option.dataset.description = img.description;
+                select.appendChild(option);
+            });
+
+            // Restore previously selected image
+            if (fpField.value) {
+                for (let opt of select.options) {
+                    if (opt.dataset.fullFingerprint === fpField.value || opt.value === fpField.value) {
+                        opt.selected = true;
+                        descField.value = opt.dataset.description;
+                        aliasField.value = opt.dataset.alias;
+                        break;
+                    }
+                }
+            }
+        } else {
+            select.innerHTML = '<option value="">No images found</option>';
+        }
+    } catch (error) {
+        select.innerHTML = `<option value="">Error loading images</option>`;
+        console.error('Failed to load images:', error);
+    } finally {
+        select.disabled = false;
+    }
+}
+
+// Load cloud-init template for containers
+async function loadContainerCloudInitTemplate() {
+    const cloudInitField = document.getElementById('container_cloud_init');
+    cloudInitField.disabled = true;
+    cloudInitField.placeholder = 'Loading template...';
+
+    try {
+        const response = await fetch('/settings/vm/template');
+        const data = await response.json();
+
+        if (data.success) {
+            cloudInitField.value = data.template;
+        } else {
+            cloudInitField.value = '# Failed to load template';
+        }
+    } catch (error) {
+        cloudInitField.value = `# Error loading template: ${error.message}`;
+    } finally {
+        cloudInitField.disabled = false;
     }
 }
 
@@ -191,9 +263,29 @@ function onImageSelect() {
     const descField = document.getElementById('image_description');
     const fpField = document.getElementById('image_fingerprint');
     const aliasField = document.getElementById('image_alias');
-    
+
     const selectedOption = select.options[select.selectedIndex];
-    
+
+    if (selectedOption.value) {
+        descField.value = selectedOption.dataset.description || selectedOption.textContent;
+        fpField.value = selectedOption.dataset.fullFingerprint || selectedOption.value;
+        aliasField.value = selectedOption.dataset.alias || '';
+    } else {
+        descField.value = '';
+        fpField.value = '';
+        aliasField.value = '';
+    }
+}
+
+// Handle container image selection
+function onContainerImageSelect() {
+    const select = document.getElementById('container_image_select');
+    const descField = document.getElementById('container_image_description');
+    const fpField = document.getElementById('container_image_fingerprint');
+    const aliasField = document.getElementById('container_image_alias');
+
+    const selectedOption = select.options[select.selectedIndex];
+
     if (selectedOption.value) {
         descField.value = selectedOption.dataset.description || selectedOption.textContent;
         fpField.value = selectedOption.dataset.fullFingerprint || selectedOption.value;
@@ -219,6 +311,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordError = document.getElementById('password-error')?.value || '';
     const vmSuccess = document.getElementById('vm-success')?.value || '';
     const vmError = document.getElementById('vm-error')?.value || '';
+    const containerSuccess = document.getElementById('container-success')?.value || '';
+    const containerError = document.getElementById('container-error')?.value || '';
     const templatesSuccess = document.getElementById('templates-success')?.value || '';
     const templatesError = document.getElementById('templates-error')?.value || '';
 
@@ -227,6 +321,11 @@ document.addEventListener('DOMContentLoaded', function() {
         templatesTab.show();
         // Load templates when tab is shown
         loadConnectionTemplates();
+    } else if (containerSuccess || containerError) {
+        const containerTab = new bootstrap.Tab(document.getElementById('container-settings-tab'));
+        containerTab.show();
+        // Load container images when container tab is shown
+        loadContainerImages();
     } else if (vmSuccess || vmError) {
         const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
         vmTab.show();
@@ -236,12 +335,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
         passwordTab.show();
     }
-    
+
     // Load connection templates when tab is clicked
     const connectionTemplatesTab = document.getElementById('connection-templates-tab');
     if (connectionTemplatesTab) {
         connectionTemplatesTab.addEventListener('shown.bs.tab', function() {
             loadConnectionTemplates();
+        });
+    }
+
+    // Load VM images when VM tab is shown
+    const vmSettingsTab = document.getElementById('vm-settings-tab');
+    if (vmSettingsTab) {
+        vmSettingsTab.addEventListener('shown.bs.tab', function() {
+            loadImages();
+        });
+    }
+
+    // Load container images when Container tab is shown
+    const containerSettingsTab = document.getElementById('container-settings-tab');
+    if (containerSettingsTab) {
+        containerSettingsTab.addEventListener('shown.bs.tab', function() {
+            loadContainerImages();
         });
     }
 });

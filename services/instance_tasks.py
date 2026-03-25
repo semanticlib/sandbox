@@ -87,7 +87,7 @@ class InstanceTaskService:
             creation_tasks[task_id]["progress"] = 25
             creation_tasks[task_id]["message"] = "Preparing instance configuration..."
 
-            # Generate SSH key pair for this VM (only for VMs, not containers)
+            # Generate SSH key pair for this instance
             ssh_keys = None
             try:
                 creation_tasks[task_id]["message"] = "Generating SSH key pair..."

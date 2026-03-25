@@ -92,13 +92,31 @@ async def create_instance(
                 "message": "LXD not configured. Please configure LXD in Settings first."
             })
 
-        # Get VM default settings for cloud-init
-        vm_settings = db.query(VMDefaultSettings).first()
-        cloud_init_template = vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else None
-        vm_swap = vm_settings.swap if vm_settings and vm_settings.swap else 2
-        vm_username = vm_settings.username if vm_settings and vm_settings.username else "ubuntu"
-        image_fingerprint = vm_settings.image_fingerprint if vm_settings and vm_settings.image_fingerprint else None
-        
+        # Check if a system user with the instance name already exists (before creating instance)
+        # This prevents conflicts with existing system users
+        from services.jump_user_service import jump_user_exists
+        if jump_user_exists(name):
+            return JSONResponse({
+                "success": False,
+                "message": f"A system user '{name}' already exists. Please choose a different instance name."
+            })
+
+        # Get VM or container default settings based on instance type
+        if instance_type == "container":
+            from core.models import ContainerDefaultSettings
+            instance_settings = db.query(ContainerDefaultSettings).first()
+            cloud_init_template = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = 2  # Not used for containers
+            vm_username = instance_settings.username if instance_settings else "root"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+        else:
+            from core.models import VMDefaultSettings
+            instance_settings = db.query(VMDefaultSettings).first()
+            cloud_init_template = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = instance_settings.swap if instance_settings and instance_settings.swap else 2
+            vm_username = instance_settings.username if instance_settings and instance_settings.username else "ubuntu"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings and instance_settings.image_fingerprint else None
+
         # Pass the raw template (with placeholders) to the background task
         # The background task will generate SSH keys and process the template
         cloud_init = cloud_init_template
@@ -301,12 +319,31 @@ async def bulk_create_instances(
                 "message": "LXD not configured. Please configure LXD in Settings first."
             })
 
-        # Get VM default settings
-        vm_settings = db.query(VMDefaultSettings).first()
-        cloud_init = vm_settings.cloud_init if vm_settings else None
-        vm_swap = vm_settings.swap if vm_settings else 2
-        vm_username = vm_settings.username if vm_settings else "ubuntu"
-        image_fingerprint = vm_settings.image_fingerprint if vm_settings else None
+        # Check if any system user with the instance names already exists (before creating instances)
+        # This prevents conflicts with existing system users
+        from services.jump_user_service import jump_user_exists
+        for name in instance_names:
+            if jump_user_exists(name):
+                return JSONResponse({
+                    "success": False,
+                    "message": f"A system user '{name}' already exists. Please choose different instance names."
+                })
+
+        # Get VM or container default settings based on instance type
+        if instance_type == "container":
+            from core.models import ContainerDefaultSettings
+            instance_settings = db.query(ContainerDefaultSettings).first()
+            cloud_init = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = 2  # Not used for containers
+            vm_username = instance_settings.username if instance_settings else "root"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+        else:
+            from core.models import VMDefaultSettings
+            instance_settings = db.query(VMDefaultSettings).first()
+            cloud_init = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = instance_settings.swap if instance_settings and instance_settings.swap else 2
+            vm_username = instance_settings.username if instance_settings else "ubuntu"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,
@@ -584,16 +621,12 @@ async def delete_instance(
 ):
     """Delete an LXD instance and its SSH keys"""
     from services.jump_user_service import delete_jump_user
-    
+
     lxd_service = LXDService(db)
     lxd_service.get_client()
 
     if not lxd_service.is_connected():
         return JSONResponse({"success": False, "message": "LXD not configured"})
-
-    # Get VM settings for username (to delete jump user)
-    vm_settings = db.query(VMDefaultSettings).first()
-    username = vm_settings.username if vm_settings else "ubuntu"
 
     # Delete the LXD instance
     result = lxd_service.delete_instance(instance_name)
@@ -612,9 +645,9 @@ async def delete_instance(
         except ValueError:
             result["message"] = "Instance deleted, invalid instance name format"
 
-        # Delete jump user from host system
+        # Delete jump user from host system (using instance name as the jump user)
         try:
-            delete_jump_user(username)
+            delete_jump_user(instance_name)
         except Exception:
             pass  # Don't fail deletion if jump user cleanup fails
 
@@ -670,21 +703,27 @@ async def download_ssh_config(
             "message": "SSH keys not found for this instance"
         })
 
-    # Get VM settings for username
+    # Create/update jump user on host system using instance name as username
+    # This ensures each instance has its own unique jump user
+    jump_user_result = create_jump_user(
+        username=instance_name,  # Fallback (not used when instance_name provided)
+        public_key=keys["public_key"],
+        instance_name=instance_name  # Use instance name as the jump user
+    )
+    if not jump_user_result.get("success"):
+        return JSONResponse({
+            "success": False,
+            "message": f"Failed to setup jump user: {jump_user_result.get('message')}"
+        })
+
+    # Get instance settings for username (used for VM login, not jump user)
+    instance_type = "virtual-machine"  # Default, could be fetched from LXD if needed
     vm_settings = db.query(VMDefaultSettings).first()
     username = vm_settings.username if vm_settings else "ubuntu"
 
     # Get connection templates from DB
     templates = db.query(ConnectionTemplate).first()
     ssh_template = templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
-
-    # Create/update jump user on host system
-    jump_user_result = create_jump_user(username, keys["public_key"])
-    if not jump_user_result.get("success"):
-        return JSONResponse({
-            "success": False,
-            "message": f"Failed to setup jump user: {jump_user_result.get('message')}"
-        })
 
     # Get VM IP address
     from services.lxd_service import LXDService

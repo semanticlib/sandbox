@@ -68,7 +68,7 @@ def validate_cloud_init_template(template: str) -> tuple[bool, str]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    required_placeholders = ['{username}', '{public_key}', '{swap_size}']
+    required_placeholders = ['{username}', '{public_key}']
     missing = []
     
     for placeholder in required_placeholders:

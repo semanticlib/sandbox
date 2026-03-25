@@ -168,8 +168,8 @@
             <div class="col-md-2">
                 <label for="instance_type" class="form-label">Type</label>
                 <select class="form-select" id="instance_type" name="type">
-                    <option value="virtual-machine">VM</option>
                     <option value="container">Container</option>
+                    <option value="virtual-machine">VM</option>
                 </select>
             </div>
             <div class="col-md-1">
@@ -502,8 +502,8 @@
                         <div class="col-md-3 mb-3">
                             <label for="bulk_type" class="form-label">Type</label>
                             <select class="form-select" id="bulk_type">
-                                <option value="virtual-machine">VM</option>
                                 <option value="container">Container</option>
+                                <option value="virtual-machine">VM</option>
                             </select>
                         </div>
                     </div>
@@ -551,5 +551,12 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/vm-support.js?v=1" type="module"></script>
 <script src="/static/js/dashboard.js?v=6"></script>
+<script type="module">
+    import { disableVMOptionsIfUnsupported } from '/static/js/vm-support.js';
+    
+    // Check VM support and disable options if not supported
+    disableVMOptionsIfUnsupported();
+</script>
 {% endblock %}

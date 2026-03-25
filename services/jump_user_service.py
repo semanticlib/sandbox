@@ -73,30 +73,37 @@ def jump_user_exists(username: str) -> bool:
         return False
 
 
-def create_jump_user(username: str, public_key: str) -> Dict:
+def create_jump_user(username: str, public_key: str, instance_name: str = None) -> Dict:
     """
     Create a jump user on the host system for SSH ProxyJump.
 
     Args:
-        username: Username for the jump user (validated)
+        username: Username for the jump user (validated) - typically the instance name
         public_key: SSH public key in OpenSSH format
+        instance_name: Optional instance name to use as username (overrides username param)
 
     Returns:
         dict with success status and message
     """
+    # Use instance_name as username if provided (ensures uniqueness)
+    safe_username = instance_name if instance_name else username
+    
     try:
         # Validate inputs
-        safe_username = _sanitize_username(username)
-        
+        safe_username = _sanitize_username(safe_username)
+
         if not _validate_ssh_public_key(public_key):
             return {
                 "success": False,
                 "message": "Invalid SSH public key format"
             }
-        
-        # Check if user already exists
-        if jump_user_exists(username):
-            return update_jump_user_keys(username, public_key)
+
+        # Check if user already exists - if so, this is a conflict
+        if jump_user_exists(safe_username):
+            return {
+                "success": False,
+                "message": f"User '{safe_username}' already exists on the host system"
+            }
 
         # Create user with nologin shell (no shell interpolation)
         subprocess.run(

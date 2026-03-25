@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.models import AdminUser, LXDSettings, VMDefaultSettings, ContainerDefaultSettings
 from core.config import settings
 from core.security import get_password_hash, verify_password
 from services.lxd_service import LXDService
@@ -58,13 +58,16 @@ async def settings_page(
     password_error: str = None,
     vm_success: str = None,
     vm_error: str = None,
+    container_success: str = None,
+    container_error: str = None,
     templates_success: str = None
 ):
-    """Settings page - change password, LXD configuration, and VM defaults"""
+    """Settings page - change password, LXD configuration, and VM/container defaults"""
     from core.models import ConnectionTemplate
-    
+
     lxd_settings = db.query(LXDSettings).first()
     vm_settings = db.query(VMDefaultSettings).first()
+    container_settings = db.query(ContainerDefaultSettings).first()
     connection_templates = db.query(ConnectionTemplate).first()
 
     return templates.TemplateResponse("admin/settings.html", {
@@ -72,6 +75,7 @@ async def settings_page(
         "username": user.username,
         "lxd_settings": lxd_settings,
         "vm_settings": vm_settings,
+        "container_settings": container_settings,
         "connection_templates": connection_templates,
         "lxd_success": lxd_success,
         "lxd_error": lxd_error,
@@ -79,6 +83,8 @@ async def settings_page(
         "password_error": password_error,
         "vm_success": vm_success,
         "vm_error": vm_error,
+        "container_success": container_success,
+        "container_error": container_error,
         "templates_success": templates_success
     })
 
@@ -212,14 +218,14 @@ async def save_vm_settings(
     """Save default VM settings"""
     # Validate username
     from core.validators import validate_username, validate_positive_integer
-    
+
     is_valid, error = validate_username(username)
     if not is_valid:
         return RedirectResponse(
             url=f"/settings?vm_error={error}",
             status_code=303
         )
-    
+
     # Validate cloud-init template if provided
     if cloud_init.strip():
         from services.cloud_init_service import validate_cloud_init_template
@@ -261,6 +267,69 @@ async def save_vm_settings(
     return RedirectResponse(url="/settings?vm_success=VM defaults saved successfully", status_code=303)
 
 
+@router.post("/settings/container")
+async def save_container_settings(
+    request: Request,
+    username: str = Form(...),
+    cpu: int = Form(...),
+    memory: int = Form(...),
+    disk: int = Form(...),
+    image_fingerprint: str = Form(""),
+    image_alias: str = Form(""),
+    image_description: str = Form(""),
+    cloud_init: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """Save default container settings"""
+    # Validate username
+    from core.validators import validate_username
+
+    is_valid, error = validate_username(username)
+    if not is_valid:
+        return RedirectResponse(
+            url=f"/settings?container_error={error}",
+            status_code=303
+        )
+
+    # Validate cloud-init template if provided
+    if cloud_init.strip():
+        from services.cloud_init_service import validate_cloud_init_template
+        is_valid, error_msg = validate_cloud_init_template(cloud_init)
+        if not is_valid:
+            return RedirectResponse(
+                url=f"/settings?container_error={error_msg}",
+                status_code=303
+            )
+
+    settings = db.query(ContainerDefaultSettings).first()
+
+    if settings:
+        settings.username = username
+        settings.cpu = cpu
+        settings.memory = memory
+        settings.disk = disk
+        settings.image_fingerprint = image_fingerprint if image_fingerprint else None
+        settings.image_alias = image_alias if image_alias else None
+        settings.image_description = image_description if image_description else None
+        settings.cloud_init = cloud_init if cloud_init else None
+    else:
+        settings = ContainerDefaultSettings(
+            username=username,
+            cpu=cpu,
+            memory=memory,
+            disk=disk,
+            image_fingerprint=image_fingerprint if image_fingerprint else None,
+            image_alias=image_alias if image_alias else None,
+            image_description=image_description if image_description else None,
+            cloud_init=cloud_init if cloud_init else None
+        )
+        db.add(settings)
+
+    db.commit()
+
+    return RedirectResponse(url="/settings?container_success=Container defaults saved successfully", status_code=303)
+
+
 @router.get("/settings/vm/template")
 async def get_cloud_init_template():
     """Get the default cloud-init template"""
@@ -272,25 +341,32 @@ async def get_cloud_init_template():
 
 
 @router.get("/settings/vm/images")
-async def get_available_images(db: Session = Depends(get_db)):
-    """Get available LXD images for VM creation"""
+async def get_available_images(
+    db: Session = Depends(get_db),
+    instance_type: str = "virtual-machine"
+):
+    """Get available LXD images for VM or container creation"""
     from services.lxd_service import LXDService
-    
+
     lxd_service = LXDService(db)
     lxd_service.get_client()
-    
+
     if not lxd_service.is_connected():
         return JSONResponse({
             "success": False,
             "message": "LXD not connected"
         })
-    
+
     try:
         images = []
         for img in lxd_service.client.images.all():
+            # Filter by instance type
+            if img.type != instance_type:
+                continue
+
             # Get image info
             description = img.properties.get('description', 'Unknown')
-            
+
             # Handle aliases which can be dicts or objects
             aliases = []
             for a in img.aliases:
@@ -300,7 +376,7 @@ async def get_available_images(db: Session = Depends(get_db)):
                     name = getattr(a, 'name', None)
                 if name:
                     aliases.append(name)
-            
+
             # Handle created_at which might be datetime or string
             created_at = None
             if img.created_at:
@@ -308,21 +384,21 @@ async def get_available_images(db: Session = Depends(get_db)):
                     created_at = img.created_at.isoformat()
                 else:
                     created_at = str(img.created_at)
-            
+
             images.append({
                 "fingerprint": img.fingerprint[:12],  # Short fingerprint
                 "full_fingerprint": img.fingerprint,
-                "description": f"{img.type}: {description}",
+                "description": f"{description}",
                 "aliases": aliases,
                 "architecture": img.architecture,
                 "type": img.type,
                 "size": img.size,
                 "created_at": created_at
             })
-        
+
         # Sort by description
         images.sort(key=lambda x: x['description'])
-        
+
         return JSONResponse({
             "success": True,
             "images": images

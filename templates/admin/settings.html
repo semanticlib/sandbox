@@ -408,6 +408,10 @@
                                 <label for="ssh_config_template" class="form-label">Default SSH Config</label>
                                 <textarea class="form-control font-monospace" id="ssh_config_template" name="ssh_config_template" rows="18"></textarea>
                                 <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
+                                <p><small class="text-muted">
+                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
+                                    to access services running on the VM from your host machine.
+                                </small></p>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Save Templates

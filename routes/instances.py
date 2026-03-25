@@ -92,13 +92,22 @@ async def create_instance(
                 "message": "LXD not configured. Please configure LXD in Settings first."
             })
 
-        # Get VM default settings for cloud-init
-        vm_settings = db.query(VMDefaultSettings).first()
-        cloud_init_template = vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else None
-        vm_swap = vm_settings.swap if vm_settings and vm_settings.swap else 2
-        vm_username = vm_settings.username if vm_settings and vm_settings.username else "ubuntu"
-        image_fingerprint = vm_settings.image_fingerprint if vm_settings and vm_settings.image_fingerprint else None
-        
+        # Get VM or container default settings based on instance type
+        if instance_type == "container":
+            from core.models import ContainerDefaultSettings
+            instance_settings = db.query(ContainerDefaultSettings).first()
+            cloud_init_template = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = 2  # Not used for containers
+            vm_username = instance_settings.username if instance_settings else "root"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+        else:
+            from core.models import VMDefaultSettings
+            instance_settings = db.query(VMDefaultSettings).first()
+            cloud_init_template = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = instance_settings.swap if instance_settings and instance_settings.swap else 2
+            vm_username = instance_settings.username if instance_settings and instance_settings.username else "ubuntu"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings and instance_settings.image_fingerprint else None
+
         # Pass the raw template (with placeholders) to the background task
         # The background task will generate SSH keys and process the template
         cloud_init = cloud_init_template
@@ -301,12 +310,21 @@ async def bulk_create_instances(
                 "message": "LXD not configured. Please configure LXD in Settings first."
             })
 
-        # Get VM default settings
-        vm_settings = db.query(VMDefaultSettings).first()
-        cloud_init = vm_settings.cloud_init if vm_settings else None
-        vm_swap = vm_settings.swap if vm_settings else 2
-        vm_username = vm_settings.username if vm_settings else "ubuntu"
-        image_fingerprint = vm_settings.image_fingerprint if vm_settings else None
+        # Get VM or container default settings based on instance type
+        if instance_type == "container":
+            from core.models import ContainerDefaultSettings
+            instance_settings = db.query(ContainerDefaultSettings).first()
+            cloud_init = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = 2  # Not used for containers
+            vm_username = instance_settings.username if instance_settings else "root"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+        else:
+            from core.models import VMDefaultSettings
+            instance_settings = db.query(VMDefaultSettings).first()
+            cloud_init = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
+            vm_swap = instance_settings.swap if instance_settings and instance_settings.swap else 2
+            vm_username = instance_settings.username if instance_settings else "ubuntu"
+            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,

@@ -39,6 +39,20 @@ class VMDefaultSettings(Base):
     cloud_init = Column(Text, nullable=True)
 
 
+class ContainerDefaultSettings(Base):
+    __tablename__ = "container_default_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, default="root")
+    cpu = Column(Integer, default=2)
+    memory = Column(Integer, default=2)
+    disk = Column(Integer, default=10)
+    image_fingerprint = Column(String, nullable=True)  # LXD image fingerprint
+    image_alias = Column(String, nullable=True)  # Image alias (e.g., "ubuntu/24.04")
+    image_description = Column(String, nullable=True)  # Human-readable description
+    cloud_init = Column(Text, nullable=True)
+
+
 class ConnectionTemplate(Base):
     __tablename__ = "connection_templates"
 

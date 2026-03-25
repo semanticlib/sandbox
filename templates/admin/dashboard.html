@@ -148,7 +148,9 @@
                 <input type="text" class="form-control" id="instance_name" name="name" placeholder="my-vm" required>
             </div>
             <div class="col-md-2">
-                <label for="instance_type" class="form-label">Type</label>
+                <label for="instance_type" class="form-label">
+                    Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                </label>
                 <select class="form-select" id="instance_type" name="type">
                     <option value="container">Container</option>
                     <option value="virtual-machine">VM</option>
@@ -512,7 +514,9 @@
                                    value="{{ vm_defaults.disk if vm_defaults else 20 }}" min="5" max="500" required>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label for="bulk_type" class="form-label">Type</label>
+                            <label for="bulk_type" class="form-label">
+                                Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                            </label>
                             <select class="form-select" id="bulk_type">
                                 <option value="container">Container</option>
                                 <option value="virtual-machine">VM</option>

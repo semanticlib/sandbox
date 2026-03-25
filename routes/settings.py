@@ -301,13 +301,6 @@ async def get_available_images(db: Session = Depends(get_db)):
                 if name:
                     aliases.append(name)
             
-            # Fallback for empty aliases: first 3 words of description
-            if not aliases and description and description != 'Unknown':
-                words = description.split()
-                fallback = " ".join(words[:3])
-                if fallback:
-                    aliases = [fallback]
-            
             # Handle created_at which might be datetime or string
             created_at = None
             if img.created_at:

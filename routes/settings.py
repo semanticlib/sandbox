@@ -312,7 +312,7 @@ async def get_available_images(db: Session = Depends(get_db)):
             images.append({
                 "fingerprint": img.fingerprint[:12],  # Short fingerprint
                 "full_fingerprint": img.fingerprint,
-                "description": description,
+                "description": f"{img.type}: {description}",
                 "aliases": aliases,
                 "architecture": img.architecture,
                 "type": img.type,

@@ -119,7 +119,7 @@ async def create_instance(
             vm_username = "root" if instance_type == "container" else "ubuntu"
             image_fingerprint = None
         
-        cloud_init = None  # Cloud-init is now handled via LXD profiles
+        cloud_init = lxd_profile.cloud_init if lxd_profile else None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,

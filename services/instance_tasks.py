@@ -149,18 +149,15 @@ class InstanceTaskService:
                     "limits.memory": f"{ram}GiB",
                 }
 
-                # Add cloud-init user-data if provided
-                if cloud_init:
-                    if ssh_keys and ssh_keys.get("public_key"):
-                        # Replace placeholders in cloud-init template
-                        from services.cloud_init_service import get_cloud_init_template
-                        instance_config["user.user-data"] = get_cloud_init_template(
-                            custom_template=cloud_init,
-                            public_key=ssh_keys["public_key"],
-                            username=vm_username
-                        )
-                    else:
-                        instance_config["user.user-data"] = cloud_init
+                # Add cloud-init user-data, get default cloud-init template if not provided
+                if ssh_keys and ssh_keys.get("public_key"):
+                    # Replace placeholders in cloud-init template
+                    from services.cloud_init_service import get_cloud_init_template
+                    instance_config["user.user-data"] = get_cloud_init_template(
+                        custom_template=cloud_init,
+                        public_key=ssh_keys["public_key"],
+                        username=vm_username
+                    )
 
                 # Build devices (shared structure)
                 instance_devices = {

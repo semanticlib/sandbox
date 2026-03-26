@@ -59,21 +59,22 @@ motd: |
 def get_cloud_init_template(custom_template: str = None, public_key: str = None, username: str = None) -> str:
     """
     Get cloud-init template with placeholders replaced.
-    
+
     Args:
-        custom_template: Custom template from database. If None, uses default template.
-        public_key: SSH public key to use. If None, uses value from settings.
-        username: Username for the VM. If None, uses value from settings.
-    
+        custom_template: Custom template from database. If None, uses default VM template.
+        public_key: SSH public key to use. If None, uses empty string.
+        username: Username for the instance. If None, uses 'ubuntu'.
+
     Returns:
-        Cloud-init template with username, public key, and swap size replaced
+        Cloud-init template with username and public key replaced
     """
-    template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE
-    
-    # Use provided values or fallback to settings
+    # Use custom template or default VM template
+    template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
+
+    # Use provided values or defaults
     ssh_public_key = public_key if public_key else ''
     vm_username = username if username else 'ubuntu'
-    
+
     # Replace placeholders with values
     return template.format(
         username=vm_username,

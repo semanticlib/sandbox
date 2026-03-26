@@ -543,9 +543,9 @@ function hideNewProfileForm() {
     }
 }
 
-async function loadDefaultCloudInit(targetId) {
+async function loadDefaultCloudInit(targetId, templateType = 'container') {
     try {
-        const res = await fetch('/settings/vm/template');
+        const res = await fetch(`/settings/cloud-init/template?template_type=${templateType}`);
         const data = await res.json();
         if (data.success) {
             document.getElementById(targetId).value = data.template;

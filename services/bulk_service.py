@@ -208,14 +208,13 @@ class BulkOperationService:
         instance_type: str,
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
-        vm_swap: int = 2,
         vm_username: str = "ubuntu",
         image_fingerprint: Optional[str] = None,
         lxd_profile: Optional[str] = None
     ):
         """
         Background task to create multiple instances.
-        
+
         Args:
             op_id: Operation ID for tracking
             instance_names: List of instance names to create
@@ -225,7 +224,6 @@ class BulkOperationService:
             instance_type: "virtual-machine" or "container"
             lxd_settings: LXD connection settings
             cloud_init: Cloud-init template
-            vm_swap: Swap size in GB
             vm_username: Default username for VMs
             image_fingerprint: Optional LXD image fingerprint
         """
@@ -263,7 +261,6 @@ class BulkOperationService:
                     instance_type=instance_type,
                     lxd_settings=lxd_settings,
                     cloud_init=cloud_init,
-                    vm_swap=vm_swap,
                     vm_username=vm_username,
                     image_fingerprint=image_fingerprint,
                     lxd_profile=lxd_profile
@@ -336,7 +333,6 @@ class BulkOperationService:
         instance_type: str,
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
-        vm_swap: int = 2,
         vm_username: str = "ubuntu",
         image_fingerprint: Optional[str] = None,
         lxd_profile: Optional[str] = None
@@ -352,7 +348,7 @@ class BulkOperationService:
         thread = threading.Thread(
             target=BulkOperationService.bulk_create_instances,
             args=(op_id, instance_names, cpu, ram, disk, instance_type,
-                  lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint, lxd_profile)
+                  lxd_settings, cloud_init, vm_username, image_fingerprint, lxd_profile)
         )
         thread.daemon = True
         thread.start()

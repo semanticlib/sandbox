@@ -4,7 +4,6 @@ import time
 import uuid
 from typing import Dict, Any, Optional
 
-from services.cloud_init_service import get_cloud_init_template
 from services.ssh_key_service import generate_and_save_keys
 
 
@@ -43,7 +42,6 @@ class InstanceTaskService:
         instance_type: str,
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
-        vm_swap: int = 2,
         vm_username: str = "ubuntu",
         image_fingerprint: Optional[str] = None,
         lxd_profile: Optional[str] = None
@@ -151,14 +149,15 @@ class InstanceTaskService:
                     "limits.memory": f"{ram}GiB",
                 }
 
-                # Add cloud-init user-data if provided (shared logic)
+                # Add cloud-init user-data if provided
                 if cloud_init:
                     if ssh_keys and ssh_keys.get("public_key"):
+                        # Replace placeholders in cloud-init template
+                        from services.cloud_init_service import get_cloud_init_template
                         instance_config["user.user-data"] = get_cloud_init_template(
-                            cloud_init,
-                            ssh_keys["public_key"],
-                            vm_swap,
-                            vm_username
+                            custom_template=cloud_init,
+                            public_key=ssh_keys["public_key"],
+                            username=vm_username
                         )
                     else:
                         instance_config["user.user-data"] = cloud_init
@@ -262,7 +261,6 @@ class InstanceTaskService:
         instance_type: str,
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
-        vm_swap: int = 2,
         vm_username: str = "ubuntu",
         image_fingerprint: Optional[str] = None,
         lxd_profile: Optional[str] = None
@@ -271,7 +269,7 @@ class InstanceTaskService:
         task_id = str(uuid.uuid4())
         thread = threading.Thread(
             target=InstanceTaskService.create_instance_background,
-            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint, lxd_profile)
+            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_username, image_fingerprint, lxd_profile)
         )
         thread.daemon = True
         thread.start()

@@ -246,11 +246,17 @@ async def get_available_images(
         })
 
 
-@router.get("/settings/vm/template")
-async def get_vm_cloud_init_template():
-    """Return the default cloud-init template text."""
-    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE
-    return JSONResponse({"success": True, "template": DEFAULT_CLOUD_INIT_TEMPLATE})
+@router.get("/settings/cloud-init/template")
+async def get_default_cloud_init_template(template_type: str = "container"):
+    """Return the default cloud-init template text for VM or Container."""
+    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE_VM, DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
+    
+    if template_type == "container":
+        template = DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
+    else:
+        template = DEFAULT_CLOUD_INIT_TEMPLATE_VM
+    
+    return JSONResponse({"success": True, "template": template})
 
 
 @router.get("/settings/connection-templates")

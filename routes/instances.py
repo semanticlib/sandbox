@@ -138,7 +138,6 @@ async def create_instance(
             instance_type=instance_type,
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
-            vm_swap=2,  # Default swap, can be set in cloud-init
             vm_username=vm_username,
             image_fingerprint=image_fingerprint,
             lxd_profile=lxd_profile
@@ -367,7 +366,6 @@ async def bulk_create_instances(
             instance_type=instance_type,
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
-            vm_swap=2,  # Default swap, can be set in cloud-init
             vm_username=vm_username,
             image_fingerprint=image_fingerprint,
             lxd_profile=lxd_profile

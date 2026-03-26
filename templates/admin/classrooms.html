@@ -257,11 +257,11 @@
                                 Cloud-init template <small class="text-muted">(leave blank to remove)</small>
                             </label>
                             <div class="d-flex gap-2 mb-2">
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pe-cloud-init', 'vm')">
-                                    <i class="bi bi-pc-display"></i> Load default (VM)
-                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pe-cloud-init', 'container')">
                                     <i class="bi bi-box"></i> Load default (Container)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pe-cloud-init', 'vm')">
+                                    <i class="bi bi-pc-display"></i> Load default (VM)
                                 </button>
                             </div>
                             <textarea class="form-control font-monospace" id="pe-cloud-init" rows="14"
@@ -309,15 +309,16 @@
                                 Cloud-init template <small class="text-muted">(optional)</small>
                             </label>
                             <div class="d-flex gap-2 mb-2">
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pn-cloud-init', 'vm')">
-                                    <i class="bi bi-pc-display"></i> Load default (VM)
-                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pn-cloud-init', 'container')">
                                     <i class="bi bi-box"></i> Load default (Container)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pn-cloud-init', 'vm')">
+                                    <i class="bi bi-pc-display"></i> Load default (VM)
                                 </button>
                             </div>
                             <textarea class="form-control font-monospace" id="pn-cloud-init" rows="14"
                                       placeholder="#cloud-config"></textarea>
+                            <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
                         </div>
                         <button class="btn btn-primary" onclick="createProfile()">
                             <i class="bi bi-plus-circle"></i> Create Profile

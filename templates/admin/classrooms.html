@@ -59,61 +59,61 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Classroom Name</label>
-                                <input type="text" class="form-control" id="cc-name" placeholder="CS101">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Classroom Name</label>
+                                    <input type="text" class="form-control" id="cc-name" placeholder="CS101">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Default Username</label>
+                                    <input type="text" class="form-control" id="cc-username" placeholder="ubuntu">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Instance Type</label>
+                                    <select class="form-select" id="cc-image-type" onchange="loadClassroomImages()">
+                                        <option value="container">Container</option>
+                                        <option value="virtual-machine">Virtual Machine</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
+                                    <select class="form-select" id="cc-lxd-profile">
+                                        <option value="">— None —</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">OS Image</label>
+                                    <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()">
+                                        <option value="">— Select an image —</option>
+                                    </select>
+                                    <small class="text-muted">Choose from available images</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Selected Image</label>
+                                    <input type="text" class="form-control" id="cc-image-description" readonly placeholder="No image selected">
+                                    <input type="hidden" id="cc-image-fingerprint">
+                                    <input type="hidden" id="cc-image-alias">
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Default Username</label>
-                                <input type="text" class="form-control" id="cc-username" placeholder="ubuntu">
-                            </div>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Image Type</label>
-                                <select class="form-select" id="cc-image-type" onchange="loadClassroomImages()">
-                                    <option value="virtual-machine">Virtual Machine</option>
-                                    <option value="container">Container</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
-                                <select class="form-select" id="cc-lxd-profile">
-                                    <option value="">— None —</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">OS Image</label>
-                            <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()">
-                                <option value="">— Select an image —</option>
-                            </select>
-                            <small class="text-muted">Choose from available images</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Selected Image</label>
-                            <input type="text" class="form-control" id="cc-image-description" readonly placeholder="No image selected">
-                            <input type="hidden" id="cc-image-fingerprint">
-                            <input type="hidden" id="cc-image-alias">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label d-flex justify-content-between align-items-center">
-                                <span>SSH Config Template</span>
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cc-ssh-config')">
-                                    <i class="bi bi-file-earmark-code"></i> Load default
-                                </button>
-                            </label>
-                            <textarea class="form-control font-monospace" id="cc-ssh-config" rows="10"
-                                      placeholder="Host {vm_name}
+                            <div class="col mb-3">
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <span>SSH Config Template</span>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cc-ssh-config')">
+                                        <i class="bi bi-file-earmark-code"></i> Load default
+                                    </button>
+                                </label>
+                                <textarea class="form-control font-monospace" id="cc-ssh-config" rows="18"
+                                        placeholder="Host {vm_name}
     HostName {host_ip}
     User {username}
     IdentityFile ~/.ssh/{private_key_filename}
     LocalForward 8080 {vm_hostname}:80"></textarea>
-                            <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
-                            <p><small class="text-muted">
-                                Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
-                                to access services running on the VM from your host machine.
-                            </small></p>
+                                <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
+                                <p><small class="text-muted">
+                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
+                                    to access services running on the VM from your host machine.
+                                </small></p>
+                            </div>
                         </div>
                         <button class="btn btn-primary" onclick="saveClassroom()">
                             <i class="bi bi-save"></i> Save Classroom
@@ -127,60 +127,64 @@
                         <i class="bi bi-plus-circle"></i> Create New Classroom
                     </div>
                     <div class="card-body">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Classroom Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="cn-name" placeholder="CS101">
+                        <div class="row g-3">
+                            <div class="col-md-4 mb-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Classroom Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="cn-name" placeholder="CS101">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Default Username</label>
+                                    <input type="text" class="form-control" id="cn-username" placeholder="ubuntu">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
+                                    <select class="form-select" id="cn-lxd-profile">
+                                        <option value="">— None —</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                                    </label>
+                                    <select class="form-select" id="cn-image-type" onchange="loadClassroomImages('new')">
+                                        <option value="container">Container</option>
+                                        <option value="virtual-machine">Virtual Machine</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">OS Image</label>
+                                    <select class="form-select" id="cn-image-select" onchange="onClassroomImageSelect('new')">
+                                        <option value="">— Select an image —</option>
+                                    </select>
+                                    <small class="text-muted">Choose from available images</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Selected Image</label>
+                                    <input type="text" class="form-control" id="cn-image-description" readonly placeholder="No image selected">
+                                    <input type="hidden" id="cn-image-fingerprint">
+                                    <input type="hidden" id="cn-image-alias">
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Default Username</label>
-                                <input type="text" class="form-control" id="cn-username" placeholder="ubuntu">
-                            </div>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">
-                                    Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                            <div class="col mb-3">
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <span>SSH Config Template</span>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cn-ssh-config')">
+                                        <i class="bi bi-file-earmark-code"></i> Load default
+                                    </button>
                                 </label>
-                                <select class="form-select" id="cn-image-type" onchange="loadClassroomImages('new')">
-                                    <option value="container">Container</option>
-                                    <option value="virtual-machine">Virtual Machine</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
-                                <select class="form-select" id="cn-lxd-profile">
-                                    <option value="">— None —</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">OS Image</label>
-                            <select class="form-select" id="cn-image-select" onchange="onClassroomImageSelect('new')">
-                                <option value="">— Select an image —</option>
-                            </select>
-                            <small class="text-muted">Choose from available images</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Selected Image</label>
-                            <input type="text" class="form-control" id="cn-image-description" readonly placeholder="No image selected">
-                            <input type="hidden" id="cn-image-fingerprint">
-                            <input type="hidden" id="cn-image-alias">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label d-flex justify-content-between align-items-center">
-                                <span>SSH Config Template</span>
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cn-ssh-config')">
-                                    <i class="bi bi-file-earmark-code"></i> Load default
-                                </button>
-                            </label>
-                            <textarea class="form-control font-monospace" id="cn-ssh-config" rows="10"
-                                      placeholder="Host {vm_name}
+                                <textarea class="form-control font-monospace" id="cn-ssh-config" rows="18"
+                                        placeholder="Host {vm_name}
     HostName {host_ip}
     User {username}
     IdentityFile ~/.ssh/{private_key_filename}
     LocalForward 8080 {vm_hostname}:80"></textarea>
-                            <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
+                                <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
+                                <p><small class="text-muted">
+                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
+                                    to access services running on the VM from your host machine.
+                                </small></p>
+                            </div>
                         </div>
                         <button class="btn btn-primary" onclick="createClassroom()">
                             <i class="bi bi-plus-circle"></i> Create Classroom

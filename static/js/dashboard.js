@@ -462,16 +462,20 @@ async function checkBulkPreflight() {
     const cpu = parseInt(document.getElementById('bulk_cpu').value);
     const ram = parseInt(document.getElementById('bulk_ram').value);
     const disk = parseInt(document.getElementById('bulk_disk').value);
-    
+    const instanceType = document.getElementById('bulk_type').value;
+    const allowOvercommit = document.getElementById('bulk_allow_overcommit').checked;
+
     const resultDiv = document.getElementById('bulk-preflight-result');
     resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Checking prerequisites...</div>';
-    
+
     try {
         const params = new URLSearchParams({
             names: instanceNames.join(','),
             cpu: cpu.toString(),
             ram: ram.toString(),
-            disk: disk.toString()
+            disk: disk.toString(),
+            type: instanceType,
+            allow_overcommit: allowOvercommit.toString()
         });
         
         const response = await fetch(`/instances/bulk/preflight?${params}`);
@@ -487,12 +491,23 @@ async function checkBulkPreflight() {
         
         if (checks.passed) {
             html += '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All pre-flight checks passed!</div>';
-            html += `<div class="alert alert-info mt-2 mb-0">
-                <strong>Resources required:</strong><br>
-                CPU: ${checks.resources_requested?.cpu || 0} vCPUs | 
-                RAM: ${checks.resources_requested?.ram_gb || 0} GB | 
-                Disk: ${checks.resources_requested?.disk_gb || 0} GB
-            </div>`;
+            
+            // Show effective resources for containers (with density factor)
+            if (checks.effective_resources && instanceType === 'container') {
+                html += `<div class="alert alert-info mt-2 mb-0">
+                    <strong>Resources required (with ${checks.effective_resources.density_factor}x container density):</strong><br>
+                    CPU: ${checks.effective_resources.cpu} vCPUs (effective) |
+                    RAM: ${checks.effective_resources.ram_gb} GB (effective) |
+                    Disk: ${checks.resources_requested?.disk_gb || 0} GB
+                </div>`;
+            } else {
+                html += `<div class="alert alert-info mt-2 mb-0">
+                    <strong>Resources required:</strong><br>
+                    CPU: ${checks.resources_requested?.cpu || 0} vCPUs |
+                    RAM: ${checks.resources_requested?.ram_gb || 0} GB |
+                    Disk: ${checks.resources_requested?.disk_gb || 0} GB
+                </div>`;
+            }
             document.getElementById('bulkCreateStartBtn').disabled = false;
         } else {
             html = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Pre-flight checks failed:</div><ul class="mb-0">';

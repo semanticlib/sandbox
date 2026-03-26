@@ -215,6 +215,8 @@ async def bulk_preflight_check(
     cpu: int = 2,
     ram: int = 4,
     disk: int = 20,
+    type: str = "container",
+    allow_overcommit: bool = False,
     db: Session = Depends(get_db),
     user: AdminUser = Depends(require_auth)
 ):
@@ -235,9 +237,11 @@ async def bulk_preflight_check(
     checks = BulkOperationService.check_preflight(
         db,
         instance_names=instance_names if instance_names else None,
-        cpu_per_vm=cpu,
-        ram_per_vm=ram,
-        disk_per_vm=disk
+        cpu_per_instance=cpu,
+        ram_per_instance=ram,
+        disk_per_instance=disk,
+        instance_type=type,
+        allow_overcommit=allow_overcommit
     )
     return JSONResponse(checks)
 

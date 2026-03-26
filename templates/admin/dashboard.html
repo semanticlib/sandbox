@@ -510,6 +510,15 @@
                             <input type="number" class="form-control" id="bulk_disk" value="20" min="5" max="500" required>
                         </div>
                     </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="bulk_allow_overcommit">
+                        <label class="form-check-label" for="bulk_allow_overcommit">
+                            Allow over-committing resources (for high-density container deployments)
+                        </label>
+                        <small class="form-text text-muted d-block mt-1">
+                            <i class="bi bi-info-circle"></i> Containers can run 4-5x denser than VMs. Enable this to allow higher CPU/RAM overcommitment ratios.
+                        </small>
+                    </div>
                 </form>
                 <div id="bulk-preflight-result" class="mt-3"></div>
                 <div class="progress mt-3" style="display: none;" id="bulk-create-progress-container">
@@ -555,7 +564,7 @@
 
 {% block extra_js %}
 <script src="/static/js/vm-support.js?v=1" type="module"></script>
-<script src="/static/js/dashboard.js?v=8"></script>
+<script src="/static/js/dashboard.js?v=9"></script>
 <script type="module">
     import { disableVMOptionsIfUnsupported } from '/static/js/vm-support.js';
     

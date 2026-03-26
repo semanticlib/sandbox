@@ -341,4 +341,12 @@
 
 {% block extra_js %}
 <script src="/static/js/classrooms.js?v=3"></script>
+<script>
+// Load classrooms on page load since it's the active tab
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof loadClassroomsTab === 'function') {
+        loadClassroomsTab();
+    }
+});
+</script>
 {% endblock %}

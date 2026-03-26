@@ -170,6 +170,9 @@ async function loadLXDProfilesForClassroom() {
         const data = await res.json();
         if (data.success) {
             _lxdProfilesCache = data.profiles;
+            // Populate dropdowns for both edit and new forms
+            populateProfileDropdowns('cc');
+            populateProfileDropdowns('cn');
         }
     } catch (err) {
         console.warn('Could not load LXD profiles:', err.message);
@@ -253,6 +256,11 @@ async function selectClassroom(id) {
     document.getElementById('classroom-placeholder').style.display = 'none';
     document.getElementById('classroom-edit-card').style.display = 'block';
     document.getElementById('classroom-alert').style.display = 'none';
+
+    // Populate profile dropdown if not already done
+    if (_lxdProfilesCache) {
+        populateProfileDropdowns('cc');
+    }
 
     // Fetch classroom details
     try {
@@ -385,6 +393,11 @@ function showNewClassroomForm() {
     ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-ssh-config']
         .forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('cn-lxd-profile').value = '';
+
+    // Populate profile dropdown if profiles are loaded
+    if (_lxdProfilesCache) {
+        populateProfileDropdowns('cn');
+    }
 
     // Deselect list item
     document.querySelectorAll('#classroom-list .active').forEach(li => li.classList.remove('active'));

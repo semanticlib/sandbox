@@ -45,7 +45,8 @@ class InstanceTaskService:
         cloud_init: Optional[str] = None,
         vm_swap: int = 2,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None
+        image_fingerprint: Optional[str] = None,
+        lxd_profile: Optional[str] = None
     ):
         """Background task to create an instance and track progress"""
         from services.lxd_client import get_lxd_client
@@ -202,6 +203,29 @@ class InstanceTaskService:
                 else:
                     client.containers.create(config_data, wait=True)
 
+                # Apply LXD profile if specified (only non-resource settings)
+                if lxd_profile:
+                    try:
+                        creation_tasks[task_id]["message"] = f"Applying profile '{lxd_profile}'..."
+                        profile = client.profiles.get(lxd_profile)
+                        instance = client.instances.get(name)
+                        # Merge profile config, but skip resource limits (cpu, memory) since those are from form
+                        skip_keys = {"limits.cpu", "limits.memory"}
+                        for key, value in profile.config.items():
+                            if key not in instance.config and key not in skip_keys:
+                                instance.config[key] = value
+                        # Merge profile devices, but skip root disk size since that's from form
+                        for dev_name, dev_config in profile.devices.items():
+                            if dev_name not in instance.devices:
+                                # Skip root device size override
+                                if dev_name == "root" and "size" in dev_config:
+                                    continue
+                                instance.devices[dev_name] = dev_config
+                        instance.save()
+                    except Exception as profile_error:
+                        # Profile application failed, but instance was created
+                        creation_tasks[task_id]["message"] = f"Instance created, but profile '{lxd_profile}' failed: {str(profile_error)}"
+
                 creation_tasks[task_id]["progress"] = 90
                 creation_tasks[task_id]["message"] = "Finalizing instance..."
                 time.sleep(1)
@@ -240,13 +264,14 @@ class InstanceTaskService:
         cloud_init: Optional[str] = None,
         vm_swap: int = 2,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None
+        image_fingerprint: Optional[str] = None,
+        lxd_profile: Optional[str] = None
     ) -> str:
         """Start a new instance creation task and return task ID"""
         task_id = str(uuid.uuid4())
         thread = threading.Thread(
             target=InstanceTaskService.create_instance_background,
-            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint)
+            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint, lxd_profile)
         )
         thread.daemon = True
         thread.start()

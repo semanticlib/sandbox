@@ -101,10 +101,24 @@ async def create_instance(
                 "message": f"A system user '{name}' already exists. Please choose a different instance name."
             })
 
-        # Get classroom settings (use first classroom as default, or None)
-        classroom = db.query(Classroom).first()
-        vm_username = classroom.username if classroom else ("root" if instance_type == "container" else "ubuntu")
-        image_fingerprint = classroom.image_fingerprint if classroom else None
+        # Get classroom from request if provided, otherwise use first classroom
+        classroom_id = data.get("classroom_id")
+        lxd_profile = data.get("lxd_profile")
+        if classroom_id:
+            classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        else:
+            classroom = db.query(Classroom).first()
+        
+        # Use classroom settings if available
+        if classroom:
+            instance_type = classroom.image_type or instance_type
+            vm_username = classroom.username
+            image_fingerprint = classroom.image_fingerprint
+            lxd_profile = lxd_profile or classroom.lxd_profile
+        else:
+            vm_username = "root" if instance_type == "container" else "ubuntu"
+            image_fingerprint = None
+        
         cloud_init = None  # Cloud-init is now handled via LXD profiles
 
         lxd_settings = {
@@ -126,7 +140,8 @@ async def create_instance(
             cloud_init=cloud_init,
             vm_swap=2,  # Default swap, can be set in cloud-init
             vm_username=vm_username,
-            image_fingerprint=image_fingerprint
+            image_fingerprint=image_fingerprint,
+            lxd_profile=lxd_profile
         )
 
         return JSONResponse({
@@ -315,10 +330,24 @@ async def bulk_create_instances(
                     "message": f"A system user '{name}' already exists. Please choose different instance names."
                 })
 
-        # Get classroom settings (use first classroom as default, or None)
-        classroom = db.query(Classroom).first()
-        vm_username = classroom.username if classroom else "ubuntu"
-        image_fingerprint = classroom.image_fingerprint if classroom else None
+        # Get classroom from request if provided, otherwise use first classroom
+        classroom_id = data.get("classroom_id")
+        lxd_profile = data.get("lxd_profile")
+        if classroom_id:
+            classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        else:
+            classroom = db.query(Classroom).first()
+        
+        # Use classroom settings if available
+        if classroom:
+            instance_type = classroom.image_type or instance_type
+            vm_username = classroom.username
+            image_fingerprint = classroom.image_fingerprint
+            lxd_profile = lxd_profile or classroom.lxd_profile
+        else:
+            vm_username = "ubuntu"
+            image_fingerprint = None
+        
         cloud_init = None  # Cloud-init is now handled via LXD profiles
 
         lxd_settings = {
@@ -340,7 +369,8 @@ async def bulk_create_instances(
             cloud_init=cloud_init,
             vm_swap=2,  # Default swap, can be set in cloud-init
             vm_username=vm_username,
-            image_fingerprint=image_fingerprint
+            image_fingerprint=image_fingerprint,
+            lxd_profile=lxd_profile
         )
 
         return JSONResponse({

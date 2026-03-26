@@ -1,78 +1,79 @@
 // Instance creation with progress tracking
 let createPollingInterval = null;
 
-// ============== LXD Profile Picker ==============
+// ============== Classroom Picker ==============
 
-let _profileCache = null;  // { name -> { cpu, memory, disk, has_cloud_init } }
+let _classroomCache = null;  // { id -> { name, image_type, lxd_profile, ... } }
 
-async function loadProfiles() {
+async function loadClassrooms() {
     try {
-        const res = await fetch('/api/lxd/profiles');
+        const res = await fetch('/api/classrooms');
         const data = await res.json();
-        if (!data.success || !data.profiles.length) return;
+        if (!data.success || !data.classrooms.length) return;
 
-        _profileCache = {};
-        data.profiles.forEach(p => { _profileCache[p.name] = p; });
+        _classroomCache = {};
+        data.classrooms.forEach(c => { _classroomCache[c.id] = c; });
 
         const selectors = [
-            document.getElementById('instance_profile'),
-            document.getElementById('bulk_profile'),
+            document.getElementById('instance_classroom'),
+            document.getElementById('bulk_classroom'),
         ];
 
         selectors.forEach(sel => {
             if (!sel) return;
-            // Keep the "— manual —" placeholder, clear the rest
+            // Keep the placeholder option, clear the rest
             while (sel.options.length > 1) sel.remove(1);
-            data.profiles.forEach(p => {
+            data.classrooms.forEach(c => {
                 const opt = document.createElement('option');
-                opt.value = p.name;
-                const cpuLabel  = p.cpu    ? `${p.cpu}c`    : '';
-                const ramLabel  = p.memory ? `${p.memory}G` : '';
-                const diskLabel = p.disk   ? `${p.disk}G`   : '';
-                const specs = [cpuLabel, ramLabel, diskLabel].filter(Boolean).join(' / ');
-                opt.textContent = specs ? `${p.name}  (${specs})` : p.name;
-                if (p.has_cloud_init) opt.textContent += '  ☁';
+                opt.value = c.id;
+                const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
+                const profileInfo = c.lxd_profile ? ` • ${c.lxd_profile}` : '';
+                opt.textContent = `${typeIcon} ${c.name}${profileInfo}`;
                 sel.appendChild(opt);
             });
         });
     } catch(e) {
-        console.warn('Could not load LXD profiles:', e.message);
+        console.warn('Could not load classrooms:', e.message);
     }
 }
 
 /**
- * Apply selected profile defaults to form fields.
+ * Apply selected classroom settings to form fields.
  * @param {'instance'|'bulk'} context
  */
-function applyProfile(context) {
-    if (!_profileCache) return;
+function applyClassroom(context) {
+    if (!_classroomCache) return;
 
     const prefix = context === 'bulk' ? 'bulk' : 'instance';
     const selEl = document.getElementById(
-        context === 'bulk' ? 'bulk_profile' : 'instance_profile'
+        context === 'bulk' ? 'bulk_classroom' : 'instance_classroom'
     );
     if (!selEl) return;
 
-    const profileName = selEl.value;
-    if (!profileName) return;  // "— manual —" selected, leave fields as-is
+    const classroomId = selEl.value;
+    if (!classroomId) return;  // No classroom selected, leave fields as-is
 
-    const p = _profileCache[profileName];
-    if (!p) return;
+    const c = _classroomCache[classroomId];
+    if (!c) return;
 
-    const cpuEl  = document.getElementById(prefix === 'bulk' ? 'bulk_cpu'  : 'instance_cpu');
-    const ramEl  = document.getElementById(prefix === 'bulk' ? 'bulk_ram'  : 'instance_ram');
-    const diskEl = document.getElementById(prefix === 'bulk' ? 'bulk_disk' : 'instance_disk');
+    // If classroom has an LXD profile, fetch its details and populate CPU/RAM/Disk
+    if (c.lxd_profile) {
+        fetch(`/api/lxd/profiles/${encodeURIComponent(c.lxd_profile)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.profile) {
+                    const p = data.profile;
+                    const cpuEl = document.getElementById(prefix === 'bulk' ? 'bulk_cpu' : 'instance_cpu');
+                    const ramEl = document.getElementById(prefix === 'bulk' ? 'bulk_ram' : 'instance_ram');
+                    const diskEl = document.getElementById(prefix === 'bulk' ? 'bulk_disk' : 'instance_disk');
 
-    if (p.cpu    != null && cpuEl)  cpuEl.value  = p.cpu;
-    if (p.memory != null && ramEl)  ramEl.value  = p.memory;
-    if (p.disk   != null && diskEl) diskEl.value = p.disk;
-}
-
-/**
- * Handle instance type change - just a placeholder for future use
- */
-function onInstanceTypeChange() {
-    // Could be used to update UI based on instance type in the future
+                    if (p.cpu != null && cpuEl) cpuEl.value = p.cpu;
+                    if (p.memory != null && ramEl) ramEl.value = p.memory;
+                    if (p.disk != null && diskEl) diskEl.value = p.disk;
+                }
+            })
+            .catch(err => console.warn('Failed to fetch profile details:', err));
+    }
 }
 
 // Live search for instances table
@@ -147,7 +148,7 @@ function initLiveSearch() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initLiveSearch();
-    loadProfiles();
+    loadClassrooms();
     const form = document.getElementById('create-instance-form');
     if (form) {
         form.addEventListener('submit', async function(e) {
@@ -159,13 +160,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const progressText = document.getElementById('create-progress-text');
             const resultDiv = document.getElementById('create-result');
 
+            // Get classroom and derive type from it
+            const classroomEl = form.instance_classroom;
+            const classroomId = classroomEl.value;
+            let instanceType = 'virtual-machine';  // default
+            let lxdProfile = null;
+            
+            if (classroomId && _classroomCache && _classroomCache[classroomId]) {
+                const classroom = _classroomCache[classroomId];
+                instanceType = classroom.image_type || 'virtual-machine';
+                lxdProfile = classroom.lxd_profile;
+            }
+
             // Get form values
             const formData = {
                 name: form.instance_name.value.trim(),
                 cpu: parseInt(form.instance_cpu.value),
                 ram: parseInt(form.instance_ram.value),
                 disk: parseInt(form.instance_disk.value),
-                type: form.instance_type.value
+                type: instanceType,
+                classroom_id: classroomId || null,
+                lxd_profile: lxdProfile
             };
 
             // Disable form during creation
@@ -505,10 +520,22 @@ async function checkBulkPreflight() {
 
 async function startBulkCreate() {
     const namesText = document.getElementById('bulk_names').value.trim();
-    
+
     if (!namesText) {
         alert('Please enter at least one instance name');
         return;
+    }
+
+    // Get classroom and derive type from it
+    const classroomEl = document.getElementById('bulk_classroom');
+    const classroomId = classroomEl.value;
+    let instanceType = 'virtual-machine';  // default
+    let lxdProfile = null;
+    
+    if (classroomId && _classroomCache && _classroomCache[classroomId]) {
+        const classroom = _classroomCache[classroomId];
+        instanceType = classroom.image_type || 'virtual-machine';
+        lxdProfile = classroom.lxd_profile;
     }
 
     // Expand patterns server-side by sending the raw pattern text
@@ -517,7 +544,9 @@ async function startBulkCreate() {
         cpu: parseInt(document.getElementById('bulk_cpu').value),
         ram: parseInt(document.getElementById('bulk_ram').value),
         disk: parseInt(document.getElementById('bulk_disk').value),
-        type: document.getElementById('bulk_type').value
+        type: instanceType,
+        classroom_id: classroomId || null,
+        lxd_profile: lxdProfile
     };
 
     // Close the bulk create modal and show progress modal

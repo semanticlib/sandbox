@@ -210,7 +210,8 @@ class BulkOperationService:
         cloud_init: Optional[str] = None,
         vm_swap: int = 2,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None
+        image_fingerprint: Optional[str] = None,
+        lxd_profile: Optional[str] = None
     ):
         """
         Background task to create multiple instances.
@@ -264,7 +265,8 @@ class BulkOperationService:
                     cloud_init=cloud_init,
                     vm_swap=vm_swap,
                     vm_username=vm_username,
-                    image_fingerprint=image_fingerprint
+                    image_fingerprint=image_fingerprint,
+                    lxd_profile=lxd_profile
                 )
                 
                 # Wait for this instance to complete before starting next
@@ -336,24 +338,25 @@ class BulkOperationService:
         cloud_init: Optional[str] = None,
         vm_swap: int = 2,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None
+        image_fingerprint: Optional[str] = None,
+        lxd_profile: Optional[str] = None
     ) -> str:
         """
         Start a bulk creation operation and return operation ID.
-        
+
         Returns:
             Operation ID for tracking progress
         """
         op_id = str(uuid.uuid4())
-        
+
         thread = threading.Thread(
             target=BulkOperationService.bulk_create_instances,
-            args=(op_id, instance_names, cpu, ram, disk, instance_type, 
-                  lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint)
+            args=(op_id, instance_names, cpu, ram, disk, instance_type,
+                  lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint, lxd_profile)
         )
         thread.daemon = True
         thread.start()
-        
+
         return op_id
 
     @staticmethod

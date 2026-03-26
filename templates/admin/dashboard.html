@@ -143,19 +143,21 @@
     </div>
     <div class="card-body">
         <form id="create-instance-form" class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="instance_name" class="form-label">Name</label>
                 <input type="text" class="form-control" id="instance_name" name="name" placeholder="my-vm" required>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label for="instance_classroom" class="form-label">Classroom</label>
                 <select class="form-select" id="instance_classroom" onchange="applyClassroom('instance')">
                     <option value="">— Select a classroom —</option>
                 </select>
             </div>
-            <div class="col-md-1">
-                <label class="form-label">Type</label>
-                <div class="form-control-plaintext fw-semibold text-body" id="instance_type_display">📦 Container</div>
+            <div class="col-md-2">
+                <label class="form-label">
+                    Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                </label>
+                <div class="form-control-plaintext fw-semibold" id="instance_type_display">📦 Container</div>
                 <input type="hidden" id="instance_type" name="type" value="container">
             </div>
             <div class="col-md-1">
@@ -489,8 +491,10 @@
                     </div>
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Type</label>
-                            <div class="form-control-plaintext fw-semibold text-body" id="bulk_type_display">📦 Container</div>
+                            <label class="form-label">
+                                Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                            </label>
+                            <div class="form-control-plaintext fw-semibold" id="bulk_type_display">📦 Container</div>
                             <input type="hidden" id="bulk_type" value="container">
                         </div>
                         <div class="col-md-3 mb-3">

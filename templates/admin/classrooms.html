@@ -139,10 +139,12 @@
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label">Image Type</label>
+                                <label class="form-label">
+                                    Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                                </label>
                                 <select class="form-select" id="cn-image-type" onchange="loadClassroomImages('new')">
-                                    <option value="virtual-machine">Virtual Machine</option>
                                     <option value="container">Container</option>
+                                    <option value="virtual-machine">Virtual Machine</option>
                                 </select>
                             </div>
                             <div class="col-md-6">

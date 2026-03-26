@@ -236,6 +236,10 @@ body.dark-mode .text-muted {
     color: #888 !important;
 }
 
+body.dark-mode .form-control-plaintext {
+    color: #eaeaea;
+}
+
 body.dark-mode .btn-close {
     filter: invert(1);
 }

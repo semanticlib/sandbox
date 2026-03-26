@@ -16,7 +16,7 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="profiles-tab" data-bs-toggle="tab" data-bs-target="#profiles" type="button" role="tab"
                 onclick="if(!_profilesLoaded) loadProfilesTab()">
-            <i class="bi bi-layers"></i> LXD Profiles
+            <i class="bi bi-layers"></i> Instance Profiles
         </button>
     </li>
 </ul>
@@ -27,7 +27,7 @@
     <div class="tab-pane fade show active" id="classrooms" role="tabpanel">
         <div class="row">
             <!-- Classroom List -->
-            <div class="col-md-4">
+            <div class="col" style="max-width: 320px; flex: 0 0 auto;">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-mortarboard"></i> Classrooms</span>
@@ -45,7 +45,7 @@
             </div>
 
             <!-- Edit / Create Panel -->
-            <div class="col-md-8">
+            <div class="col">
                 <!-- Alert area -->
                 <div id="classroom-alert" style="display:none;"></div>
 
@@ -77,7 +77,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">LXD Profile <small class="text-muted">(optional)</small></label>
+                                <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
                                 <select class="form-select" id="cc-lxd-profile">
                                     <option value="">— None —</option>
                                 </select>
@@ -88,7 +88,7 @@
                             <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()">
                                 <option value="">— Select an image —</option>
                             </select>
-                            <small class="text-muted">Choose from available LXD images</small>
+                            <small class="text-muted">Choose from available images</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Selected Image</label>
@@ -148,7 +148,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">LXD Profile <small class="text-muted">(optional)</small></label>
+                                <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
                                 <select class="form-select" id="cn-lxd-profile">
                                     <option value="">— None —</option>
                                 </select>
@@ -159,7 +159,7 @@
                             <select class="form-select" id="cn-image-select" onchange="onClassroomImageSelect('new')">
                                 <option value="">— Select an image —</option>
                             </select>
-                            <small class="text-muted">Choose from available LXD images</small>
+                            <small class="text-muted">Choose from available images</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Selected Image</label>
@@ -203,7 +203,7 @@
     <div class="tab-pane fade" id="profiles" role="tabpanel">
         <div class="row">
             <!-- Profile List -->
-            <div class="col-md-4">
+            <div class="col" style="max-width: 320px; flex: 0 0 auto;">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-layers"></i> Profiles</span>
@@ -221,7 +221,7 @@
             </div>
 
             <!-- Edit / Create Panel -->
-            <div class="col-md-8">
+            <div class="col">
                 <!-- Alert area -->
                 <div id="profile-alert" style="display:none;"></div>
 

@@ -27,6 +27,11 @@ function toggleConnectionFields() {
     }
 }
 
+// Initialize connection type fields on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleConnectionFields();
+});
+
 async function testConnection() {
     const resultDiv = document.getElementById('test-result');
     resultDiv.style.display = 'block';

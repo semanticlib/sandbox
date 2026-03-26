@@ -68,6 +68,13 @@ function applyProfile(context) {
     if (p.disk   != null && diskEl) diskEl.value = p.disk;
 }
 
+/**
+ * Handle instance type change - just a placeholder for future use
+ */
+function onInstanceTypeChange() {
+    // Could be used to update UI based on instance type in the future
+}
+
 // Live search for instances table
 function initLiveSearch() {
     const searchInput = document.getElementById('search-instances');

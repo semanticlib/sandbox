@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from core.database import Base, get_db
-from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.models import AdminUser, LXDSettings, Classroom
 from core.security import get_password_hash
 from main import app
 
@@ -214,28 +214,26 @@ def mock_lxd_settings(db_session):
     )
     db_session.add(settings)
     db_session.commit()
-    
+
     return settings
 
 
 @pytest.fixture
-def mock_vm_settings(db_session):
-    """Create default VM settings in test database."""
-    settings = VMDefaultSettings(
+def mock_classroom(db_session):
+    """Create default classroom in test database."""
+    classroom = Classroom(
+        name="Test Classroom",
         username="ubuntu",
-        cpu=2,
-        memory=4,
-        disk=20,
-        swap=2,
+        image_type="virtual-machine",
         image_fingerprint="abc123def456",
         image_alias="ubuntu/24.04",
         image_description="Ubuntu 24.04 LTS",
-        cloud_init="#cloud-config\nusers:\n  - name: {username}\n    ssh_authorized_keys:\n      - {public_key}",
+        ssh_config_template="Host {vm_name}\n    HostName {host_ip}\n    User {username}",
     )
-    db_session.add(settings)
+    db_session.add(classroom)
     db_session.commit()
-    
-    return settings
+
+    return classroom
 
 
 # ============== Utility Fixtures ==============

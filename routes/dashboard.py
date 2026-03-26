@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.models import AdminUser, LXDSettings, Classroom
 from core.config import settings
 from services.metrics_service import get_system_metrics
 from services.lxd_service import LXDService
@@ -21,7 +21,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     """Get current logged-in user from session cookie"""
     from jose import JWTError, jwt
     from core.config import settings
-    
+
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -93,6 +93,9 @@ async def dashboard(
     except Exception:
         lxd_connected = False
 
+    # Get default classroom (first one or None)
+    default_classroom = db.query(Classroom).first()
+
     return templates.TemplateResponse("admin/dashboard.html", {
         "request": request,
         "username": user.username,
@@ -104,7 +107,7 @@ async def dashboard(
         "instances": instances,
         "page": page,
         "search": search,
-        "vm_defaults": db.query(VMDefaultSettings).first(),
+        "default_classroom": default_classroom,
         # System metrics
         "cpu_percent": metrics["cpu_percent"],
         "memory_used": metrics["memory_used"],

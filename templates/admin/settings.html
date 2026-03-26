@@ -13,24 +13,15 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="vm-settings-tab" data-bs-toggle="tab" data-bs-target="#vm-settings" type="button" role="tab">
-            <i class="bi bi-pc-display"></i> VM Settings
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="container-settings-tab" data-bs-toggle="tab" data-bs-target="#container-settings" type="button" role="tab">
-            <i class="bi bi-box"></i> Container Settings
+        <button class="nav-link" id="classrooms-tab" data-bs-toggle="tab" data-bs-target="#classrooms" type="button" role="tab"
+                onclick="if(!_classroomsLoaded) loadClassroomsTab()">
+            <i class="bi bi-mortarboard"></i> Classrooms
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="profiles-tab" data-bs-toggle="tab" data-bs-target="#profiles" type="button" role="tab"
                 onclick="if(!_profilesLoaded) loadProfilesTab()">
             <i class="bi bi-layers"></i> LXD Profiles
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="connection-templates-tab" data-bs-toggle="tab" data-bs-target="#connection-templates" type="button" role="tab">
-            <i class="bi bi-file-text"></i> Connection Templates
         </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -148,245 +139,174 @@
         </div>
     </div>
 
-    <!-- VM Settings Tab -->
-    <div class="tab-pane fade" id="vm-settings" role="tabpanel">
+    <!-- Classrooms Tab -->
+    <div class="tab-pane fade" id="classrooms" role="tabpanel">
         <div class="row">
-            <div class="col-md-12">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="bi bi-pc-display"></i> Default VM Configuration
+            <!-- Classroom List -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-mortarboard"></i> Classrooms</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showNewClassroomForm()">
+                            <i class="bi bi-plus-lg"></i> New
+                        </button>
                     </div>
-                    <div class="card-body">
-                        {% if vm_success %}
-                        <div class="alert alert-success" role="alert">
-                            {{ vm_success }}
+                    <div class="card-body p-0">
+                        <div id="classroom-list-loading" class="text-center p-4 text-muted">
+                            <i class="bi bi-hourglass-split"></i> Loading classrooms…
                         </div>
-                        {% endif %}
-
-                        {% if vm_error %}
-                        <div class="alert alert-danger" role="alert">
-                            {{ vm_error }}
-                        </div>
-                        {% endif %}
-
-                        <form method="post" action="/settings/vm">
-                            <div class="row">
-                                <!-- Left Column: VM Defaults -->
-                                <div class="col-md-3">
-                                    <h6 class="mb-3"><i class="bi bi-sliders"></i> Default VM Configuration</h6>
-
-                                    <div class="mb-3">
-                                        <label for="default_username" class="form-label">Default Username</label>
-                                        <input type="text" class="form-control" id="default_username" name="username"
-                                               value="{{ vm_settings.username if vm_settings and vm_settings.username else 'ubuntu' }}"
-                                               required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="default_cpu" class="form-label">CPU Cores</label>
-                                        <input type="number" class="form-control" id="default_cpu" name="cpu"
-                                               value="{{ vm_settings.cpu if vm_settings else 2 }}"
-                                               min="1" max="32" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="default_memory" class="form-label">Memory (GiB)</label>
-                                        <input type="number" class="form-control" id="default_memory" name="memory"
-                                               value="{{ vm_settings.memory if vm_settings else 4 }}"
-                                               min="1" max="128" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="default_disk" class="form-label">Disk Size (GiB)</label>
-                                        <input type="number" class="form-control" id="default_disk" name="disk"
-                                               value="{{ vm_settings.disk if vm_settings else 20 }}"
-                                               min="5" max="500" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="default_swap" class="form-label">Swap (GiB)</label>
-                                        <input type="number" class="form-control" id="default_swap" name="swap"
-                                               value="{{ vm_settings.swap if vm_settings and vm_settings.swap else 2 }}"
-                                               min="0" max="32" required>
-                                    </div>
-                                </div>
-
-                                <!-- Middle Column: Image Selection -->
-                                <div class="col-md-4">
-                                    <h6 class="mb-3"><i class="bi bi-disc"></i> OS Image</h6>
-
-                                    <div class="mb-3">
-                                        <label for="image_select" class="form-label">Select Image</label>
-                                        <select class="form-select" id="image_select" onchange="onImageSelect()">
-                                            <option value="">-- Select an image --</option>
-                                        </select>
-                                        <small class="text-muted">Choose from available LXD images</small>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Selected Image</label>
-                                        <input type="text" class="form-control" id="image_description" name="image_description"
-                                               value="{{ vm_settings.image_description if vm_settings and vm_settings.image_description else '' }}"
-                                               readonly placeholder="No image selected">
-                                    </div>
-
-                                    <!-- Hidden fields for image data -->
-                                    <input type="hidden" id="image_fingerprint" name="image_fingerprint"
-                                           value="{{ vm_settings.image_fingerprint if vm_settings and vm_settings.image_fingerprint else '' }}">
-                                    <input type="hidden" id="image_alias" name="image_alias"
-                                           value="{{ vm_settings.image_alias if vm_settings and vm_settings.image_alias else '' }}">
-
-                                    <div class="alert alert-info">
-                                        <i class="bi bi-info-circle"></i>
-                                        <small>Click <button type="button" class="btn btn-sm btn-link p-0" onclick="loadImages('virtual-machine')">🔄 Refresh</button> to reload available images from LXD.</small>
-                                    </div>
-                                </div>
-
-                                <!-- Right Column: Cloud-init Template -->
-                                <div class="col-md-5">
-                                    <h6 class="mb-3"><i class="bi bi-file-earmark-code"></i> Cloud-init Template</h6>
-
-                                    <div class="mb-3">
-                                        <label for="cloud_init" class="form-label d-flex justify-content-between align-items-center">
-                                            <span>Configuration (YAML)</span>
-                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="loadCloudInitTemplate()">
-                                                <i class="bi bi-file-earmark-code"></i> Load Template
-                                            </button>
-                                        </label>
-                                        <textarea class="form-control font-monospace" id="cloud_init" name="cloud_init" rows="14"
-                                                  placeholder="#cloud-config&#10;users:&#10;  - name: ubuntu&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ vm_settings.cloud_init if vm_settings and vm_settings.cloud_init else '' }}</textarea>
-                                        <small class="text-muted"><a href="https://cloud-init.io" target="_blank">Cloud-init</a> configuration template for VM preparation.</small>
-                                        <div class="alert alert-info mt-3">
-                                            <i class="bi bi-info-circle"></i>
-                                            <strong>Note:</strong> The <code>{username}</code>, <code>{public_key}</code>, and <code>{swap_size}</code> are updated automatically from the values saved in the database.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Save VM Defaults
-                            </button>
-                        </form>
+                        <ul class="list-group list-group-flush" id="classroom-list" style="display:none;"></ul>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Container Settings Tab -->
-    <div class="tab-pane fade" id="container-settings" role="tabpanel">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="bi bi-box"></i> Default Container Configuration
+            <!-- Edit / Create Panel -->
+            <div class="col-md-8">
+                <!-- Alert area -->
+                <div id="classroom-alert" style="display:none;"></div>
+
+                <!-- Edit existing classroom -->
+                <div class="card" id="classroom-edit-card" style="display:none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-pencil-square"></i> Edit Classroom: <strong id="classroom-edit-name"></strong></span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteClassroom()" id="classroom-delete-btn">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
                     </div>
                     <div class="card-body">
-                        {% if container_success %}
-                        <div class="alert alert-success" role="alert">
-                            {{ container_success }}
-                        </div>
-                        {% endif %}
-
-                        {% if container_error %}
-                        <div class="alert alert-danger" role="alert">
-                            {{ container_error }}
-                        </div>
-                        {% endif %}
-
-                        <form method="post" action="/settings/container">
-                            <div class="row">
-                                <!-- Left Column: Container Defaults -->
-                                <div class="col-md-3">
-                                    <h6 class="mb-3"><i class="bi bi-sliders"></i> Default Container Configuration</h6>
-
-                                    <div class="mb-3">
-                                        <label for="container_username" class="form-label">Default Username</label>
-                                        <input type="text" class="form-control" id="container_username" name="username"
-                                               value="{{ container_settings.username if container_settings and container_settings.username else 'root' }}"
-                                               required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="container_cpu" class="form-label">CPU Cores</label>
-                                        <input type="number" class="form-control" id="container_cpu" name="cpu"
-                                               value="{{ container_settings.cpu if container_settings else 2 }}"
-                                               min="1" max="32" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="container_memory" class="form-label">Memory (GiB)</label>
-                                        <input type="number" class="form-control" id="container_memory" name="memory"
-                                               value="{{ container_settings.memory if container_settings else 2 }}"
-                                               min="1" max="128" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="container_disk" class="form-label">Disk Size (GiB)</label>
-                                        <input type="number" class="form-control" id="container_disk" name="disk"
-                                               value="{{ container_settings.disk if container_settings else 20 }}"
-                                               min="5" max="500" required>
-                                    </div>
-                                </div>
-
-                                <!-- Middle Column: Image Selection -->
-                                <div class="col-md-4">
-                                    <h6 class="mb-3"><i class="bi bi-disc"></i> OS Image</h6>
-
-                                    <div class="mb-3">
-                                        <label for="container_image_select" class="form-label">Select Image</label>
-                                        <select class="form-select" id="container_image_select" onchange="onContainerImageSelect()">
-                                            <option value="">-- Select an image --</option>
-                                        </select>
-                                        <small class="text-muted">Choose from available LXD container images</small>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Selected Image</label>
-                                        <input type="text" class="form-control" id="container_image_description" name="image_description"
-                                               value="{{ container_settings.image_description if container_settings and container_settings.image_description else '' }}"
-                                               readonly placeholder="No image selected">
-                                    </div>
-
-                                    <!-- Hidden fields for image data -->
-                                    <input type="hidden" id="container_image_fingerprint" name="image_fingerprint"
-                                           value="{{ container_settings.image_fingerprint if container_settings and container_settings.image_fingerprint else '' }}">
-                                    <input type="hidden" id="container_image_alias" name="image_alias"
-                                           value="{{ container_settings.image_alias if container_settings and container_settings.image_alias else '' }}">
-
-                                    <div class="alert alert-info">
-                                        <i class="bi bi-info-circle"></i>
-                                        <small>Click <button type="button" class="btn btn-sm btn-link p-0" onclick="loadContainerImages()">🔄 Refresh</button> to reload available images from LXD.</small>
-                                    </div>
-                                </div>
-
-                                <!-- Right Column: Cloud-init Template -->
-                                <div class="col-md-5">
-                                    <h6 class="mb-3"><i class="bi bi-file-earmark-code"></i> Cloud-init Template</h6>
-
-                                    <div class="mb-3">
-                                        <label for="container_cloud_init" class="form-label d-flex justify-content-between align-items-center">
-                                            <span>Configuration (YAML)</span>
-                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="loadContainerCloudInitTemplate()">
-                                                <i class="bi bi-file-earmark-code"></i> Load Template
-                                            </button>
-                                        </label>
-                                        <textarea class="form-control font-monospace" id="container_cloud_init" name="cloud_init" rows="14"
-                                                  placeholder="#cloud-config&#10;users:&#10;  - name: root&#10;    sudo: ALL=(ALL) NOPASSWD:ALL&#10;    shell: /bin/bash">{{ container_settings.cloud_init if container_settings and container_settings.cloud_init else '' }}</textarea>
-                                        <small class="text-muted"><a href="https://cloud-init.io" target="_blank">Cloud-init</a> configuration template for container preparation.</small>
-                                        <div class="alert alert-info mt-3">
-                                            <i class="bi bi-info-circle"></i>
-                                            <strong>Note:</strong> The <code>{username}</code>, <code>{public_key}</code>, and <code>{swap_size}</code> are updated automatically from the values saved in the database.
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Classroom Name</label>
+                                <input type="text" class="form-control" id="cc-name" placeholder="CS101">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Default Username</label>
+                                <input type="text" class="form-control" id="cc-username" placeholder="ubuntu">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Image Type</label>
+                                <select class="form-select" id="cc-image-type" onchange="loadClassroomImages()">
+                                    <option value="virtual-machine">Virtual Machine</option>
+                                    <option value="container">Container</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">LXD Profile <small class="text-muted">(optional)</small></label>
+                                <select class="form-select" id="cc-lxd-profile">
+                                    <option value="">— None —</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">OS Image</label>
+                            <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()">
+                                <option value="">— Select an image —</option>
+                            </select>
+                            <small class="text-muted">Choose from available LXD images</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Selected Image</label>
+                            <input type="text" class="form-control" id="cc-image-description" readonly placeholder="No image selected">
+                            <input type="hidden" id="cc-image-fingerprint">
+                            <input type="hidden" id="cc-image-alias">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>SSH Config Template</span>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cc-ssh-config')">
+                                    <i class="bi bi-file-earmark-code"></i> Load default
+                                </button>
+                            </label>
+                            <textarea class="form-control font-monospace" id="cc-ssh-config" rows="10"
+                                      placeholder="Host {vm_name}
+    HostName {host_ip}
+    User {username}
+    IdentityFile ~/.ssh/{private_key_filename}
+    LocalForward 8080 {vm_hostname}:80"></textarea>
+                            <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
+                            <p><small class="text-muted">
+                                Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
+                                to access services running on the VM from your host machine.
+                            </small></p>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveClassroom()">
+                            <i class="bi bi-save"></i> Save Classroom
+                        </button>
+                    </div>
+                </div>
 
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Save Container Defaults
-                            </button>
-                        </form>
+                <!-- Create new classroom -->
+                <div class="card" id="classroom-new-card" style="display:none;">
+                    <div class="card-header">
+                        <i class="bi bi-plus-circle"></i> Create New Classroom
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Classroom Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cn-name" placeholder="CS101">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Default Username</label>
+                                <input type="text" class="form-control" id="cn-username" placeholder="ubuntu">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Image Type</label>
+                                <select class="form-select" id="cn-image-type" onchange="loadClassroomImages('new')">
+                                    <option value="virtual-machine">Virtual Machine</option>
+                                    <option value="container">Container</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">LXD Profile <small class="text-muted">(optional)</small></label>
+                                <select class="form-select" id="cn-lxd-profile">
+                                    <option value="">— None —</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">OS Image</label>
+                            <select class="form-select" id="cn-image-select" onchange="onClassroomImageSelect('new')">
+                                <option value="">— Select an image —</option>
+                            </select>
+                            <small class="text-muted">Choose from available LXD images</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Selected Image</label>
+                            <input type="text" class="form-control" id="cn-image-description" readonly placeholder="No image selected">
+                            <input type="hidden" id="cn-image-fingerprint">
+                            <input type="hidden" id="cn-image-alias">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>SSH Config Template</span>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cn-ssh-config')">
+                                    <i class="bi bi-file-earmark-code"></i> Load default
+                                </button>
+                            </label>
+                            <textarea class="form-control font-monospace" id="cn-ssh-config" rows="10"
+                                      placeholder="Host {vm_name}
+    HostName {host_ip}
+    User {username}
+    IdentityFile ~/.ssh/{private_key_filename}
+    LocalForward 8080 {vm_hostname}:80"></textarea>
+                            <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
+                        </div>
+                        <button class="btn btn-primary" onclick="createClassroom()">
+                            <i class="bi bi-plus-circle"></i> Create Classroom
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Placeholder when no classroom selected -->
+                <div class="card" id="classroom-placeholder">
+                    <div class="card-body text-center text-muted py-5">
+                        <i class="bi bi-mortarboard" style="font-size: 3rem;"></i>
+                        <p class="mt-3">Select a classroom to edit or create a new one</p>
                     </div>
                 </div>
             </div>
@@ -495,7 +415,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label d-flex justify-content-between">
-                                <span>Cloud-init template</span>
+                                <span>Cloud-init template <small class="text-muted">(optional)</small></span>
                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pn-cloud-init')">
                                     <i class="bi bi-file-earmark-code"></i> Load default
                                 </button>
@@ -503,67 +423,28 @@
                             <textarea class="form-control font-monospace" id="pn-cloud-init" rows="14"
                                       placeholder="#cloud-config"></textarea>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-primary" onclick="createProfile()">
-                                <i class="bi bi-plus-lg"></i> Create Profile
-                            </button>
-                            <button class="btn btn-outline-secondary" onclick="hideNewProfileForm()">
-                                Cancel
-                            </button>
-                        </div>
+                        <button class="btn btn-primary" onclick="createProfile()">
+                            <i class="bi bi-plus-circle"></i> Create Profile
+                        </button>
                     </div>
                 </div>
 
-                <!-- Placeholder when nothing is selected -->
-                <div id="profile-placeholder" class="text-center text-muted py-5">
-                    <i class="bi bi-layers" style="font-size:3rem;"></i>
-                    <p class="mt-2">Select a profile to edit, or create a new one.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Connection Templates Tab -->
-    <div class="tab-pane fade" id="connection-templates" role="tabpanel">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="bi bi-file-text"></i> SSH Connection Templates
-                    </div>
-                    <div class="card-body">
-                        {% if templates_success %}
-                        <div class="alert alert-success" role="alert">
-                            {{ templates_success }}
-                        </div>
-                        {% endif %}
-
-                        <form method="post" action="/settings/connection-templates">
-                            <h6 class="mb-3"><i class="bi bi-file-text"></i> SSH Config Template</h6>
-                            <div class="mb-3">
-                                <label for="ssh_config_template" class="form-label">Default SSH Config</label>
-                                <textarea class="form-control font-monospace" id="ssh_config_template" name="ssh_config_template" rows="18"></textarea>
-                                <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
-                                <p><small class="text-muted">
-                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
-                                    to access services running on the VM from your host machine.
-                                </small></p>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Save Templates
-                            </button>
-                        </form>
+                <!-- Placeholder when no profile selected -->
+                <div class="card" id="profile-placeholder">
+                    <div class="card-body text-center text-muted py-5">
+                        <i class="bi bi-layers" style="font-size: 3rem;"></i>
+                        <p class="mt-3">Select a profile to edit or create a new one</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Password Change Tab -->
+    <!-- Password Tab -->
     <div class="tab-pane fade" id="password" role="tabpanel">
         <div class="row">
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card">
                     <div class="card-header">
                         <i class="bi bi-key"></i> Change Password
                     </div>
@@ -587,14 +468,15 @@
                             </div>
                             <div class="mb-3">
                                 <label for="new_password" class="form-label">New Password</label>
-                                <input type="password" class="form-control" id="new_password" name="new_password" required placeholder="At least 6 characters">
+                                <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                <small class="text-muted">Minimum 8 characters, include uppercase, lowercase, number, and special character</small>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label for="confirm_password" class="form-label">Confirm New Password</label>
                                 <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                             </div>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg"></i> Update Password
+                                <i class="bi bi-key"></i> Change Password
                             </button>
                         </form>
                     </div>
@@ -603,28 +485,8 @@
         </div>
     </div>
 </div>
-
-<div id="cert-alert" style="display:none;"></div>
-<div id="test-result" style="display:none;"></div>
-
-<!-- Pass template variables to JavaScript -->
-<input type="hidden" id="password-success" value="{{ password_success if password_success else '' }}">
-<input type="hidden" id="password-error" value="{{ password_error if password_error else '' }}">
-<input type="hidden" id="vm-success" value="{{ vm_success if vm_success else '' }}">
-<input type="hidden" id="vm-error" value="{{ vm_error if vm_error else '' }}">
-<input type="hidden" id="container-success" value="{{ container_success if container_success else '' }}">
-<input type="hidden" id="container-error" value="{{ container_error if container_error else '' }}">
-<input type="hidden" id="templates-success" value="{{ templates_success if templates_success else '' }}">
-<input type="hidden" id="templates-error" value="{{ templates_error if templates_error else '' }}">
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/vm-support.js?v=1" type="module"></script>
-<script src="/static/js/settings.js?v=4"></script>
-<script type="module">
-    import { disableVMOptionsIfUnsupported } from '/static/js/vm-support.js';
-    
-    // Check VM support and disable options if not supported
-    disableVMOptionsIfUnsupported();
-</script>
+<script src="/static/js/settings.js?v=8"></script>
 {% endblock %}

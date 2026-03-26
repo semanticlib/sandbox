@@ -98,268 +98,329 @@ async function generateCertificate() {
     }
 }
 
-async function loadCloudInitTemplate() {
-    const cloudInitField = document.getElementById('cloud_init');
-    cloudInitField.disabled = true;
-    cloudInitField.placeholder = 'Loading template...';
-    
+
+// ============================================================
+// Classroom Management
+// ============================================================
+
+let _currentClassroomId = null;
+let _classroomsLoaded = false;
+let _lxdProfilesCache = null;
+
+async function loadClassroomsTab() {
+    _classroomsLoaded = true;
+    const loading = document.getElementById('classroom-list-loading');
+    const list = document.getElementById('classroom-list');
+
+    loading.style.display = 'block';
+    list.style.display = 'none';
+    list.innerHTML = '';
+
+    // Load LXD profiles for dropdown
+    await loadLXDProfilesForClassroom();
+
     try {
-        const response = await fetch('/settings/vm/template');
-        const data = await response.json();
-        
-        if (data.success) {
-            cloudInitField.value = data.template;
-        } else {
-            cloudInitField.value = '# Failed to load template';
+        const res = await fetch('/api/classrooms');
+        const data = await res.json();
+
+        loading.style.display = 'none';
+
+        if (!data.success) {
+            list.style.display = 'block';
+            list.innerHTML = `<li class="list-group-item text-danger"><i class="bi bi-x-circle"></i> ${data.message}</li>`;
+            return;
         }
-    } catch (error) {
-        cloudInitField.value = `# Error loading template: ${error.message}`;
-    } finally {
-        cloudInitField.disabled = false;
+
+        if (!data.classrooms.length) {
+            list.style.display = 'block';
+            list.innerHTML = '<li class="list-group-item text-muted">No classrooms found</li>';
+            return;
+        }
+
+        data.classrooms.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            li.dataset.id = c.id;
+            li.style.cursor = 'pointer';
+
+            const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
+            const profileInfo = c.lxd_profile ? ` • Profile: ${c.lxd_profile}` : '';
+
+            li.innerHTML = `
+                <div>
+                    <strong>${c.name}</strong>
+                    <br><small class="text-muted">${typeIcon} ${c.image_type === 'virtual-machine' ? 'VM' : 'Container'}${profileInfo}</small>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>`;
+            li.addEventListener('click', () => selectClassroom(c.id));
+            list.appendChild(li);
+        });
+
+        list.style.display = 'block';
+    } catch (err) {
+        loading.style.display = 'none';
+        list.style.display = 'block';
+        list.innerHTML = `<li class="list-group-item text-danger"><i class="bi bi-x-circle"></i> ${err.message}</li>`;
     }
 }
 
-// Load available LXD images
-async function loadImages(instanceType = 'virtual-machine') {
-    const select = document.getElementById('image_select');
-    const descField = document.getElementById('image_description');
-    const fpField = document.getElementById('image_fingerprint');
-    const aliasField = document.getElementById('image_alias');
+async function loadLXDProfilesForClassroom() {
+    try {
+        const res = await fetch('/api/lxd/profiles');
+        const data = await res.json();
+        if (data.success) {
+            _lxdProfilesCache = data.profiles;
+        }
+    } catch (err) {
+        console.warn('Could not load LXD profiles:', err.message);
+    }
+}
 
+function populateProfileDropdowns(prefix) {
+    const select = document.getElementById(`${prefix}-lxd-profile`);
+    if (!select || !_lxdProfilesCache) return;
+
+    // Keep the first option, remove the rest
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+
+    _lxdProfilesCache.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name + (p.description ? ` - ${p.description}` : '');
+        select.appendChild(opt);
+    });
+}
+
+async function loadClassroomImages(context = 'edit') {
+    const prefix = context === 'new' ? 'cn' : 'cc';
+    const imageType = document.getElementById(`${prefix}-image-type`).value;
+    const select = document.getElementById(`${prefix}-image-select`);
+
+    select.innerHTML = '<option value="">— Select an image —</option>';
     select.disabled = true;
-    select.innerHTML = '<option>Loading...</option>';
 
     try {
-        const response = await fetch(`/settings/vm/images?instance_type=${instanceType}`);
-        const data = await response.json();
+        const res = await fetch(`/settings/vm/images?instance_type=${imageType}`);
+        const data = await res.json();
 
-        if (data.success && data.images.length > 0) {
-            select.innerHTML = '<option value="">-- Select an image --</option>';
-
+        if (data.success && data.images) {
             data.images.forEach(img => {
-                const aliasText = img.aliases.length > 0 ? ` (${img.aliases.join(', ')})` : '';
-                const option = document.createElement('option');
-                option.value = img.fingerprint;
-                option.textContent = `${img.description}${aliasText}`;
-                option.dataset.fullFingerprint = img.full_fingerprint;
-                option.dataset.alias = img.aliases.length > 0 ? img.aliases[0] : '';
-                option.dataset.description = img.description;
-                select.appendChild(option);
+                const opt = document.createElement('option');
+                opt.value = img.fingerprint;
+                opt.textContent = img.description;
+                opt.dataset.fullFingerprint = img.full_fingerprint;
+                opt.dataset.alias = img.aliases.join(', ');
+                select.appendChild(opt);
             });
-
-            // Restore previously selected image
-            if (fpField.value) {
-                for (let opt of select.options) {
-                    if (opt.dataset.fullFingerprint === fpField.value || opt.value === fpField.value) {
-                        opt.selected = true;
-                        descField.value = opt.dataset.description;
-                        aliasField.value = opt.dataset.alias;
-                        break;
-                    }
-                }
-            }
-        } else {
-            select.innerHTML = '<option value="">No images found</option>';
+            select.disabled = false;
         }
-    } catch (error) {
-        select.innerHTML = `<option value="">Error loading images</option>`;
-        console.error('Failed to load images:', error);
-    } finally {
-        select.disabled = false;
+    } catch (err) {
+        console.error('Failed to load images:', err);
     }
 }
 
-// Load available LXD container images
-async function loadContainerImages() {
-    const select = document.getElementById('container_image_select');
-    const descField = document.getElementById('container_image_description');
-    const fpField = document.getElementById('container_image_fingerprint');
-    const aliasField = document.getElementById('container_image_alias');
+function onClassroomImageSelect(context = 'edit') {
+    const prefix = context === 'new' ? 'cn' : 'cc';
+    const select = document.getElementById(`${prefix}-image-select`);
+    const descInput = document.getElementById(`${prefix}-image-description`);
+    const fingerprintInput = document.getElementById(`${prefix}-image-fingerprint`);
+    const aliasInput = document.getElementById(`${prefix}-image-alias`);
 
-    select.disabled = true;
-    select.innerHTML = '<option>Loading...</option>';
-
-    try {
-        const response = await fetch('/settings/vm/images?instance_type=container');
-        const data = await response.json();
-
-        if (data.success && data.images.length > 0) {
-            select.innerHTML = '<option value="">-- Select an image --</option>';
-
-            data.images.forEach(img => {
-                const aliasText = img.aliases.length > 0 ? ` (${img.aliases.join(', ')})` : '';
-                const option = document.createElement('option');
-                option.value = img.fingerprint;
-                option.textContent = `${img.description}${aliasText}`;
-                option.dataset.fullFingerprint = img.full_fingerprint;
-                option.dataset.alias = img.aliases.length > 0 ? img.aliases[0] : '';
-                option.dataset.description = img.description;
-                select.appendChild(option);
-            });
-
-            // Restore previously selected image
-            if (fpField.value) {
-                for (let opt of select.options) {
-                    if (opt.dataset.fullFingerprint === fpField.value || opt.value === fpField.value) {
-                        opt.selected = true;
-                        descField.value = opt.dataset.description;
-                        aliasField.value = opt.dataset.alias;
-                        break;
-                    }
-                }
-            }
-        } else {
-            select.innerHTML = '<option value="">No images found</option>';
-        }
-    } catch (error) {
-        select.innerHTML = `<option value="">Error loading images</option>`;
-        console.error('Failed to load images:', error);
-    } finally {
-        select.disabled = false;
-    }
-}
-
-// Load cloud-init template for containers
-async function loadContainerCloudInitTemplate() {
-    const cloudInitField = document.getElementById('container_cloud_init');
-    cloudInitField.disabled = true;
-    cloudInitField.placeholder = 'Loading template...';
-
-    try {
-        const response = await fetch('/settings/vm/template');
-        const data = await response.json();
-
-        if (data.success) {
-            cloudInitField.value = data.template;
-        } else {
-            cloudInitField.value = '# Failed to load template';
-        }
-    } catch (error) {
-        cloudInitField.value = `# Error loading template: ${error.message}`;
-    } finally {
-        cloudInitField.disabled = false;
-    }
-}
-
-// Load connection templates
-async function loadConnectionTemplates() {
-    const sshConfigField = document.getElementById('ssh_config_template');
-
-    try {
-        const response = await fetch('/settings/connection-templates');
-        const data = await response.json();
-
-        if (data.success) {
-            sshConfigField.value = data.ssh_config_template;
-        }
-    } catch (error) {
-        console.error('Failed to load connection templates:', error);
-    }
-}
-
-// Handle image selection
-function onImageSelect() {
-    const select = document.getElementById('image_select');
-    const descField = document.getElementById('image_description');
-    const fpField = document.getElementById('image_fingerprint');
-    const aliasField = document.getElementById('image_alias');
-
-    const selectedOption = select.options[select.selectedIndex];
-
-    if (selectedOption.value) {
-        descField.value = selectedOption.dataset.description || selectedOption.textContent;
-        fpField.value = selectedOption.dataset.fullFingerprint || selectedOption.value;
-        aliasField.value = selectedOption.dataset.alias || '';
+    const selected = select.options[select.selectedIndex];
+    if (selected.value) {
+        descInput.value = selected.textContent;
+        fingerprintInput.value = selected.dataset.fullFingerprint;
+        aliasInput.value = selected.dataset.alias;
     } else {
-        descField.value = '';
-        fpField.value = '';
-        aliasField.value = '';
+        descInput.value = '';
+        fingerprintInput.value = '';
+        aliasInput.value = '';
     }
 }
 
-// Handle container image selection
-function onContainerImageSelect() {
-    const select = document.getElementById('container_image_select');
-    const descField = document.getElementById('container_image_description');
-    const fpField = document.getElementById('container_image_fingerprint');
-    const aliasField = document.getElementById('container_image_alias');
+async function selectClassroom(id) {
+    // Highlight in list
+    document.querySelectorAll('#classroom-list .list-group-item').forEach(li => {
+        li.classList.toggle('active', li.dataset.id == id);
+    });
 
-    const selectedOption = select.options[select.selectedIndex];
+    _currentClassroomId = id;
+    hideNewClassroomForm();
 
-    if (selectedOption.value) {
-        descField.value = selectedOption.dataset.description || selectedOption.textContent;
-        fpField.value = selectedOption.dataset.fullFingerprint || selectedOption.value;
-        aliasField.value = selectedOption.dataset.alias || '';
-    } else {
-        descField.value = '';
-        fpField.value = '';
-        aliasField.value = '';
+    // Show edit card, hide placeholder
+    document.getElementById('classroom-placeholder').style.display = 'none';
+    document.getElementById('classroom-edit-card').style.display = 'block';
+    document.getElementById('classroom-alert').style.display = 'none';
+
+    // Fetch classroom details
+    try {
+        const res = await fetch(`/api/classrooms/${id}`);
+        const data = await res.json();
+        if (!data.success) { showClassroomAlert('danger', data.message); return; }
+        const c = data.classroom;
+
+        document.getElementById('classroom-edit-name').textContent = c.name;
+        document.getElementById('cc-name').value = c.name;
+        document.getElementById('cc-username').value = c.username;
+        document.getElementById('cc-image-type').value = c.image_type;
+        document.getElementById('cc-lxd-profile').value = c.lxd_profile || '';
+        document.getElementById('cc-image-fingerprint').value = c.image_fingerprint || '';
+        document.getElementById('cc-image-alias').value = c.image_alias || '';
+        document.getElementById('cc-image-description').value = c.image_description || '';
+        document.getElementById('cc-ssh-config').value = c.ssh_config_template || '';
+
+        // Load images for the selected type
+        await loadClassroomImages('edit');
+    } catch (err) {
+        showClassroomAlert('danger', `Failed to load classroom: ${err.message}`);
     }
 }
 
-// Initialize connection fields on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Unix Socket is the default selection in the dropdown
-    toggleConnectionFields();
+async function saveClassroom() {
+    if (!_currentClassroomId) return;
 
-    // Always show LXD Connection tab by default on fresh page load
-    const lxdTab = new bootstrap.Tab(document.getElementById('lxd-tab'));
-    lxdTab.show();
+    const payload = {
+        name: document.getElementById('cc-name').value.trim(),
+        username: document.getElementById('cc-username').value,
+        image_type: document.getElementById('cc-image-type').value,
+        lxd_profile: document.getElementById('cc-lxd-profile').value || null,
+        image_fingerprint: document.getElementById('cc-image-fingerprint').value || null,
+        image_alias: document.getElementById('cc-image-alias').value || null,
+        image_description: document.getElementById('cc-image-description').value || null,
+        ssh_config_template: document.getElementById('cc-ssh-config').value,
+    };
 
-    // Auto-switch to specific tab if there are related messages
-    const passwordSuccess = document.getElementById('password-success')?.value || '';
-    const passwordError = document.getElementById('password-error')?.value || '';
-    const vmSuccess = document.getElementById('vm-success')?.value || '';
-    const vmError = document.getElementById('vm-error')?.value || '';
-    const containerSuccess = document.getElementById('container-success')?.value || '';
-    const containerError = document.getElementById('container-error')?.value || '';
-    const templatesSuccess = document.getElementById('templates-success')?.value || '';
-    const templatesError = document.getElementById('templates-error')?.value || '';
-
-    if (templatesSuccess || templatesError) {
-        const templatesTab = new bootstrap.Tab(document.getElementById('connection-templates-tab'));
-        templatesTab.show();
-        // Load templates when tab is shown
-        loadConnectionTemplates();
-    } else if (containerSuccess || containerError) {
-        const containerTab = new bootstrap.Tab(document.getElementById('container-settings-tab'));
-        containerTab.show();
-        // Load container images when container tab is shown
-        loadContainerImages();
-    } else if (vmSuccess || vmError) {
-        const vmTab = new bootstrap.Tab(document.getElementById('vm-settings-tab'));
-        vmTab.show();
-        // Load images when VM tab is shown
-        loadImages();
-    } else if (passwordSuccess || passwordError) {
-        const passwordTab = new bootstrap.Tab(document.getElementById('password-tab'));
-        passwordTab.show();
+    if (!payload.name) {
+        showClassroomAlert('danger', 'Classroom name is required.');
+        return;
     }
 
-    // Load connection templates when tab is clicked
-    const connectionTemplatesTab = document.getElementById('connection-templates-tab');
-    if (connectionTemplatesTab) {
-        connectionTemplatesTab.addEventListener('shown.bs.tab', function() {
-            loadConnectionTemplates();
+    try {
+        const res = await fetch(`/api/classrooms/${_currentClassroomId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
         });
+        const data = await res.json();
+        if (data.success) {
+            showClassroomAlert('success', `Classroom '${payload.name}' saved.`);
+            document.getElementById('classroom-edit-name').textContent = payload.name;
+            loadClassroomsTab();
+        } else {
+            showClassroomAlert('danger', data.message);
+        }
+    } catch (err) {
+        showClassroomAlert('danger', err.message);
     }
+}
 
-    // Load VM images when VM tab is shown
-    const vmSettingsTab = document.getElementById('vm-settings-tab');
-    if (vmSettingsTab) {
-        vmSettingsTab.addEventListener('shown.bs.tab', function() {
-            loadImages();
-        });
-    }
+async function createClassroom() {
+    const name = document.getElementById('cn-name').value.trim();
+    if (!name) { showClassroomAlert('danger', 'Classroom name is required.'); return; }
 
-    // Load container images when Container tab is shown
-    const containerSettingsTab = document.getElementById('container-settings-tab');
-    if (containerSettingsTab) {
-        containerSettingsTab.addEventListener('shown.bs.tab', function() {
-            loadContainerImages();
+    const payload = {
+        name,
+        username: document.getElementById('cn-username').value,
+        image_type: document.getElementById('cn-image-type').value,
+        lxd_profile: document.getElementById('cn-lxd-profile').value || null,
+        image_fingerprint: document.getElementById('cn-image-fingerprint').value || null,
+        image_alias: document.getElementById('cn-image-alias').value || null,
+        image_description: document.getElementById('cn-image-description').value || null,
+        ssh_config_template: document.getElementById('cn-ssh-config').value,
+    };
+
+    try {
+        const res = await fetch('/api/classrooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
         });
+        const data = await res.json();
+        if (data.success) {
+            showClassroomAlert('success', `Classroom '${name}' created.`);
+            hideNewClassroomForm();
+            _classroomsLoaded = false;
+            loadClassroomsTab();
+        } else {
+            showClassroomAlert('danger', data.message);
+        }
+    } catch (err) {
+        showClassroomAlert('danger', err.message);
     }
-});
+}
+
+async function deleteClassroom() {
+    if (!_currentClassroomId) return;
+    if (!confirm(`Delete this classroom? This cannot be undone.`)) return;
+
+    try {
+        const res = await fetch(`/api/classrooms/${_currentClassroomId}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+            _currentClassroomId = null;
+            document.getElementById('classroom-edit-card').style.display = 'none';
+            document.getElementById('classroom-placeholder').style.display = 'block';
+            showClassroomAlert('success', data.message);
+            _classroomsLoaded = false;
+            loadClassroomsTab();
+        } else {
+            showClassroomAlert('danger', data.message);
+        }
+    } catch (err) {
+        showClassroomAlert('danger', err.message);
+    }
+}
+
+function showNewClassroomForm() {
+    document.getElementById('classroom-new-card').style.display = 'block';
+    document.getElementById('classroom-edit-card').style.display = 'none';
+    document.getElementById('classroom-placeholder').style.display = 'none';
+    document.getElementById('classroom-alert').style.display = 'none';
+
+    // Clear fields
+    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-ssh-config']
+        .forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('cn-lxd-profile').value = '';
+
+    // Deselect list item
+    document.querySelectorAll('#classroom-list .active').forEach(li => li.classList.remove('active'));
+    _currentClassroomId = null;
+
+    // Load images
+    loadClassroomImages('new');
+}
+
+function hideNewClassroomForm() {
+    document.getElementById('classroom-new-card').style.display = 'none';
+    if (!_currentClassroomId) {
+        document.getElementById('classroom-placeholder').style.display = 'block';
+    }
+}
+
+function showClassroomAlert(type, message) {
+    const el = document.getElementById('classroom-alert');
+    el.style.display = 'block';
+    el.innerHTML = `<div class="alert alert-${type} alert-dismissible mb-3">
+        <i class="bi bi-${type === 'success' ? 'check-circle' : 'x-circle'}"></i> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.parentElement.style.display='none'"></button>
+    </div>`;
+}
+
+async function loadDefaultSSHConfig(targetId) {
+    try {
+        const res = await fetch('/settings/connection-templates');
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById(targetId).value = data.ssh_config_template;
+        }
+    } catch (err) {
+        console.error('Failed to load default SSH config:', err);
+    }
+}
 
 
 // ============================================================

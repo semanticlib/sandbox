@@ -1,11 +1,11 @@
-"""Settings routes: LXD, VM defaults, password change"""
+"""Settings routes: LXD, Classroom management, password change"""
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import AdminUser, LXDSettings, VMDefaultSettings, ContainerDefaultSettings
+from core.models import AdminUser, LXDSettings, Classroom
 from core.config import settings
 from core.security import get_password_hash, verify_password
 from services.lxd_service import LXDService
@@ -20,7 +20,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     """Get current logged-in user from session cookie"""
     from jose import JWTError, jwt
     from core.config import settings
-    
+
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -55,37 +55,19 @@ async def settings_page(
     lxd_success: str = None,
     lxd_error: str = None,
     password_success: str = None,
-    password_error: str = None,
-    vm_success: str = None,
-    vm_error: str = None,
-    container_success: str = None,
-    container_error: str = None,
-    templates_success: str = None
+    password_error: str = None
 ):
-    """Settings page - change password, LXD configuration, and VM/container defaults"""
-    from core.models import ConnectionTemplate
-
+    """Settings page - change password, LXD configuration"""
     lxd_settings = db.query(LXDSettings).first()
-    vm_settings = db.query(VMDefaultSettings).first()
-    container_settings = db.query(ContainerDefaultSettings).first()
-    connection_templates = db.query(ConnectionTemplate).first()
 
     return templates.TemplateResponse("admin/settings.html", {
         "request": request,
         "username": user.username,
         "lxd_settings": lxd_settings,
-        "vm_settings": vm_settings,
-        "container_settings": container_settings,
-        "connection_templates": connection_templates,
         "lxd_success": lxd_success,
         "lxd_error": lxd_error,
         "password_success": password_success,
-        "password_error": password_error,
-        "vm_success": vm_success,
-        "vm_error": vm_error,
-        "container_success": container_success,
-        "container_error": container_error,
-        "templates_success": templates_success
+        "password_error": password_error
     })
 
 
@@ -99,7 +81,6 @@ async def change_password(
     user: AdminUser = Depends(require_auth)
 ):
     """Handle password change"""
-    from core.models import ConnectionTemplate
     from core.security import validate_password_strength
 
     # Validate new password strength
@@ -109,8 +90,6 @@ async def change_password(
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
-            "vm_settings": db.query(VMDefaultSettings).first(),
-            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": error
         })
 
@@ -119,8 +98,6 @@ async def change_password(
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
-            "vm_settings": db.query(VMDefaultSettings).first(),
-            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "New passwords do not match"
         })
 
@@ -129,8 +106,6 @@ async def change_password(
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
-            "vm_settings": db.query(VMDefaultSettings).first(),
-            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "Current password is incorrect"
         })
 
@@ -201,142 +176,13 @@ async def generate_certificate(request: Request):
         return JSONResponse({"success": False, "message": "Failed to generate certificate"})
 
 
-@router.post("/settings/vm")
-async def save_vm_settings(
-    request: Request,
-    username: str = Form(...),
-    cpu: int = Form(...),
-    memory: int = Form(...),
-    disk: int = Form(...),
-    swap: int = Form(...),
-    image_fingerprint: str = Form(""),
-    image_alias: str = Form(""),
-    image_description: str = Form(""),
-    cloud_init: str = Form(""),
-    db: Session = Depends(get_db)
-):
-    """Save default VM settings"""
-    # Validate username
-    from core.validators import validate_username, validate_positive_integer
-
-    is_valid, error = validate_username(username)
-    if not is_valid:
-        return RedirectResponse(
-            url=f"/settings?vm_error={error}",
-            status_code=303
-        )
-
-    # Validate cloud-init template if provided
-    if cloud_init.strip():
-        from services.cloud_init_service import validate_cloud_init_template
-        is_valid, error_msg = validate_cloud_init_template(cloud_init)
-        if not is_valid:
-            return RedirectResponse(
-                url=f"/settings?vm_error={error_msg}",
-                status_code=303
-            )
-
-    settings = db.query(VMDefaultSettings).first()
-
-    if settings:
-        settings.username = username
-        settings.cpu = cpu
-        settings.memory = memory
-        settings.disk = disk
-        settings.swap = swap
-        settings.image_fingerprint = image_fingerprint if image_fingerprint else None
-        settings.image_alias = image_alias if image_alias else None
-        settings.image_description = image_description if image_description else None
-        settings.cloud_init = cloud_init if cloud_init else None
-    else:
-        settings = VMDefaultSettings(
-            username=username,
-            cpu=cpu,
-            memory=memory,
-            disk=disk,
-            swap=swap,
-            image_fingerprint=image_fingerprint if image_fingerprint else None,
-            image_alias=image_alias if image_alias else None,
-            image_description=image_description if image_description else None,
-            cloud_init=cloud_init if cloud_init else None
-        )
-        db.add(settings)
-
-    db.commit()
-
-    return RedirectResponse(url="/settings?vm_success=VM defaults saved successfully", status_code=303)
-
-
-@router.post("/settings/container")
-async def save_container_settings(
-    request: Request,
-    username: str = Form(...),
-    cpu: int = Form(...),
-    memory: int = Form(...),
-    disk: int = Form(...),
-    image_fingerprint: str = Form(""),
-    image_alias: str = Form(""),
-    image_description: str = Form(""),
-    cloud_init: str = Form(""),
-    db: Session = Depends(get_db)
-):
-    """Save default container settings"""
-    # Validate username
-    from core.validators import validate_username
-
-    is_valid, error = validate_username(username)
-    if not is_valid:
-        return RedirectResponse(
-            url=f"/settings?container_error={error}",
-            status_code=303
-        )
-
-    # Validate cloud-init template if provided
-    if cloud_init.strip():
-        from services.cloud_init_service import validate_cloud_init_template
-        is_valid, error_msg = validate_cloud_init_template(cloud_init)
-        if not is_valid:
-            return RedirectResponse(
-                url=f"/settings?container_error={error_msg}",
-                status_code=303
-            )
-
-    settings = db.query(ContainerDefaultSettings).first()
-
-    if settings:
-        settings.username = username
-        settings.cpu = cpu
-        settings.memory = memory
-        settings.disk = disk
-        settings.image_fingerprint = image_fingerprint if image_fingerprint else None
-        settings.image_alias = image_alias if image_alias else None
-        settings.image_description = image_description if image_description else None
-        settings.cloud_init = cloud_init if cloud_init else None
-    else:
-        settings = ContainerDefaultSettings(
-            username=username,
-            cpu=cpu,
-            memory=memory,
-            disk=disk,
-            image_fingerprint=image_fingerprint if image_fingerprint else None,
-            image_alias=image_alias if image_alias else None,
-            image_description=image_description if image_description else None,
-            cloud_init=cloud_init if cloud_init else None
-        )
-        db.add(settings)
-
-    db.commit()
-
-    return RedirectResponse(url="/settings?container_success=Container defaults saved successfully", status_code=303)
-
-
-@router.get("/settings/vm/template")
-async def get_cloud_init_template():
-    """Get the default cloud-init template"""
-    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE
+@router.get("/settings/connection-templates")
+async def get_connection_templates():
+    """Get default SSH config template"""
+    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
     return JSONResponse({
         "success": True,
-        "template": DEFAULT_CLOUD_INIT_TEMPLATE
+        "ssh_config_template": DEFAULT_SSH_CONFIG_TEMPLATE
     })
 
 
@@ -346,8 +192,6 @@ async def get_available_images(
     instance_type: str = "virtual-machine"
 ):
     """Get available LXD images for VM or container creation"""
-    from services.lxd_service import LXDService
-
     lxd_service = LXDService(db)
     lxd_service.get_client()
 
@@ -480,44 +324,6 @@ async def get_lxd_profiles(db: Session = Depends(get_db)):
         import logging
         logging.exception("Error fetching LXD profiles")
         return JSONResponse({"success": False, "message": "Failed to fetch profiles"})
-
-
-@router.get("/settings/connection-templates")
-async def get_connection_templates(db: Session = Depends(get_db)):
-    """Get connection templates (SSH config)"""
-    from core.models import ConnectionTemplate
-    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
-
-    templates = db.query(ConnectionTemplate).first()
-
-    return JSONResponse({
-        "success": True,
-        "ssh_config_template": templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
-    })
-
-
-@router.post("/settings/connection-templates")
-async def save_connection_templates(
-    request: Request,
-    ssh_config_template: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    """Save connection templates"""
-    from core.models import ConnectionTemplate
-
-    templates = db.query(ConnectionTemplate).first()
-
-    if templates:
-        templates.ssh_config_template = ssh_config_template
-    else:
-        templates = ConnectionTemplate(
-            ssh_config_template=ssh_config_template
-        )
-        db.add(templates)
-
-    db.commit()
-
-    return RedirectResponse(url="/settings?templates_success=Connection templates saved successfully", status_code=303)
 
 
 # ============================================================
@@ -677,4 +483,178 @@ async def delete_lxd_profile(name: str, db: Session = Depends(get_db)):
     except Exception as exc:
         import logging
         logging.exception("Error deleting LXD profile")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+# ============================================================
+# Classroom CRUD (JSON API)
+# ============================================================
+
+@router.get("/api/classrooms")
+async def get_classrooms(db: Session = Depends(get_db)):
+    """Return all classrooms."""
+    try:
+        classrooms = db.query(Classroom).all()
+        return JSONResponse({
+            "success": True,
+            "classrooms": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "username": c.username,
+                    "image_type": c.image_type,
+                    "lxd_profile": c.lxd_profile,
+                    "image_fingerprint": c.image_fingerprint,
+                    "image_alias": c.image_alias,
+                    "image_description": c.image_description,
+                    "ssh_config_template": c.ssh_config_template or "",
+                }
+                for c in classrooms
+            ]
+        })
+    except Exception as exc:
+        import logging
+        logging.exception("Error fetching classrooms")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+@router.get("/api/classrooms/{classroom_id}")
+async def get_classroom(classroom_id: int, db: Session = Depends(get_db)):
+    """Return a single classroom by ID."""
+    try:
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        if not classroom:
+            return JSONResponse({"success": False, "message": "Classroom not found"}, status_code=404)
+        return JSONResponse({
+            "success": True,
+            "classroom": {
+                "id": classroom.id,
+                "name": classroom.name,
+                "username": classroom.username,
+                "image_type": classroom.image_type,
+                "lxd_profile": classroom.lxd_profile,
+                "image_fingerprint": classroom.image_fingerprint,
+                "image_alias": classroom.image_alias,
+                "image_description": classroom.image_description,
+                "ssh_config_template": classroom.ssh_config_template or "",
+            }
+        })
+    except Exception as exc:
+        import logging
+        logging.exception("Error fetching classroom")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+@router.post("/api/classrooms")
+async def create_classroom(request: Request, db: Session = Depends(get_db)):
+    """Create a new classroom."""
+    try:
+        data = await request.json()
+        name = (data.get("name") or "").strip()
+        if not name:
+            return JSONResponse({"success": False, "message": "Classroom name is required"})
+
+        # Check if name already exists
+        existing = db.query(Classroom).filter(Classroom.name == name).first()
+        if existing:
+            return JSONResponse({"success": False, "message": "Classroom name already exists"})
+
+        classroom = Classroom(
+            name=name,
+            username=data.get("username", "ubuntu"),
+            image_type=data.get("image_type", "virtual-machine"),
+            lxd_profile=data.get("lxd_profile"),
+            image_fingerprint=data.get("image_fingerprint"),
+            image_alias=data.get("image_alias"),
+            image_description=data.get("image_description"),
+            ssh_config_template=data.get("ssh_config_template"),
+        )
+        db.add(classroom)
+        db.commit()
+        db.refresh(classroom)
+
+        return JSONResponse({
+            "success": True,
+            "classroom": {
+                "id": classroom.id,
+                "name": classroom.name,
+                "username": classroom.username,
+                "image_type": classroom.image_type,
+                "lxd_profile": classroom.lxd_profile,
+                "image_fingerprint": classroom.image_fingerprint,
+                "image_alias": classroom.image_alias,
+                "image_description": classroom.image_description,
+                "ssh_config_template": classroom.ssh_config_template or "",
+            }
+        })
+    except Exception as exc:
+        import logging
+        logging.exception("Error creating classroom")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+@router.put("/api/classrooms/{classroom_id}")
+async def update_classroom(classroom_id: int, request: Request, db: Session = Depends(get_db)):
+    """Update an existing classroom."""
+    try:
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        if not classroom:
+            return JSONResponse({"success": False, "message": "Classroom not found"}, status_code=404)
+
+        data = await request.json()
+
+        # Check if name is being changed and if it already exists
+        new_name = data.get("name", classroom.name).strip()
+        if new_name != classroom.name:
+            existing = db.query(Classroom).filter(Classroom.name == new_name).first()
+            if existing:
+                return JSONResponse({"success": False, "message": "Classroom name already exists"})
+            classroom.name = new_name
+
+        classroom.username = data.get("username", classroom.username)
+        classroom.image_type = data.get("image_type", classroom.image_type)
+        classroom.lxd_profile = data.get("lxd_profile")
+        classroom.image_fingerprint = data.get("image_fingerprint")
+        classroom.image_alias = data.get("image_alias")
+        classroom.image_description = data.get("image_description")
+        classroom.ssh_config_template = data.get("ssh_config_template")
+
+        db.commit()
+        db.refresh(classroom)
+
+        return JSONResponse({
+            "success": True,
+            "classroom": {
+                "id": classroom.id,
+                "name": classroom.name,
+                "username": classroom.username,
+                "image_type": classroom.image_type,
+                "lxd_profile": classroom.lxd_profile,
+                "image_fingerprint": classroom.image_fingerprint,
+                "image_alias": classroom.image_alias,
+                "image_description": classroom.image_description,
+                "ssh_config_template": classroom.ssh_config_template or "",
+            }
+        })
+    except Exception as exc:
+        import logging
+        logging.exception("Error updating classroom")
+        return JSONResponse({"success": False, "message": str(exc)})
+
+
+@router.delete("/api/classrooms/{classroom_id}")
+async def delete_classroom(classroom_id: int, db: Session = Depends(get_db)):
+    """Delete a classroom."""
+    try:
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        if not classroom:
+            return JSONResponse({"success": False, "message": "Classroom not found"}, status_code=404)
+
+        db.delete(classroom)
+        db.commit()
+
+        return JSONResponse({"success": True, "message": f"Classroom '{classroom.name}' deleted"})
+    except Exception as exc:
+        import logging
+        logging.exception("Error deleting classroom")
         return JSONResponse({"success": False, "message": str(exc)})

@@ -61,12 +61,12 @@
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label class="form-label">Classroom Name</label>
-                                    <input type="text" class="form-control" id="cc-name" placeholder="CS101">
+                                    <label class="form-label">Classroom Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="cc-name" placeholder="CS101" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Default Username</label>
-                                    <input type="text" class="form-control" id="cc-username" placeholder="ubuntu">
+                                    <label class="form-label">Default Username <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="cc-username" placeholder="ubuntu" required>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Instance Type</label>
@@ -131,11 +131,11 @@
                             <div class="col-md-4 mb-3">
                                 <div class="mb-3">
                                     <label class="form-label">Classroom Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="cn-name" placeholder="CS101">
+                                    <input type="text" class="form-control" id="cn-name" placeholder="CS101" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Default Username</label>
-                                    <input type="text" class="form-control" id="cn-username" placeholder="ubuntu">
+                                    <label class="form-label">Default Username <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="cn-username" placeholder="ubuntu" required>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
@@ -353,7 +353,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/classrooms.js?v=3"></script>
+<script src="/static/js/classrooms.js?v=4"></script>
 <script>
 // Load classrooms on page load since it's the active tab
 document.addEventListener('DOMContentLoaded', function() {

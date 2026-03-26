@@ -196,7 +196,7 @@ async function saveClassroom() {
 
     const payload = {
         name: document.getElementById('cc-name').value.trim(),
-        username: document.getElementById('cc-username').value,
+        username: document.getElementById('cc-username').value.trim(),
         image_type: document.getElementById('cc-image-type').value,
         lxd_profile: document.getElementById('cc-lxd-profile').value || null,
         image_fingerprint: document.getElementById('cc-image-fingerprint').value || null,
@@ -207,6 +207,11 @@ async function saveClassroom() {
 
     if (!payload.name) {
         showClassroomAlert('danger', 'Classroom name is required.');
+        return;
+    }
+
+    if (!payload.username) {
+        showClassroomAlert('danger', 'Default username is required.');
         return;
     }
 
@@ -231,11 +236,14 @@ async function saveClassroom() {
 
 async function createClassroom() {
     const name = document.getElementById('cn-name').value.trim();
+    const username = document.getElementById('cn-username').value.trim();
+    
     if (!name) { showClassroomAlert('danger', 'Classroom name is required.'); return; }
+    if (!username) { showClassroomAlert('danger', 'Default username is required.'); return; }
 
     const payload = {
         name,
-        username: document.getElementById('cn-username').value,
+        username,
         image_type: document.getElementById('cn-image-type').value,
         lxd_profile: document.getElementById('cn-lxd-profile').value || null,
         image_fingerprint: document.getElementById('cn-image-fingerprint').value || null,

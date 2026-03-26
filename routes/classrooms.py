@@ -153,6 +153,10 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
         if not name:
             return JSONResponse({"success": False, "message": "Classroom name is required"})
 
+        username = (data.get("username") or "").strip()
+        if not username:
+            return JSONResponse({"success": False, "message": "Default username is required"})
+
         # Check if name already exists
         existing = db.query(Classroom).filter(Classroom.name == name).first()
         if existing:
@@ -160,7 +164,7 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
 
         classroom = Classroom(
             name=name,
-            username=data.get("username", "ubuntu"),
+            username=username,
             image_type=data.get("image_type", "container"),
             lxd_profile=data.get("lxd_profile"),
             image_fingerprint=data.get("image_fingerprint"),
@@ -210,7 +214,11 @@ async def update_classroom(classroom_id: int, request: Request, db: Session = De
                 return JSONResponse({"success": False, "message": "Classroom name already exists"})
             classroom.name = new_name
 
-        classroom.username = data.get("username", classroom.username)
+        new_username = (data.get("username") or "").strip()
+        if not new_username:
+            return JSONResponse({"success": False, "message": "Default username is required"})
+        classroom.username = new_username
+
         classroom.image_type = data.get("image_type", classroom.image_type)
         classroom.lxd_profile = data.get("lxd_profile")
         classroom.image_fingerprint = data.get("image_fingerprint")

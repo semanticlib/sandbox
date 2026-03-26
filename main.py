@@ -37,12 +37,13 @@ templates.env.globals['app_title'] = settings.APP_TITLE
 
 # ============== Include Routers ==============
 
-from routes import auth, dashboard, instances, settings
+from routes import auth, dashboard, instances, settings, classrooms
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(instances.router)
 app.include_router(settings.router)
+app.include_router(classrooms.router)
 
 
 # ============== Exception Handlers ==============

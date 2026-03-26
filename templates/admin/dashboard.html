@@ -147,11 +147,16 @@
                 <label for="instance_name" class="form-label">Name</label>
                 <input type="text" class="form-control" id="instance_name" name="name" placeholder="my-vm" required>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="instance_classroom" class="form-label">Classroom</label>
                 <select class="form-select" id="instance_classroom" onchange="applyClassroom('instance')">
                     <option value="">— Select a classroom —</option>
                 </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Type</label>
+                <div class="form-control-plaintext fw-semibold text-body" id="instance_type_display">📦 Container</div>
+                <input type="hidden" id="instance_type" name="type" value="container">
             </div>
             <div class="col-md-1">
                 <label for="instance_cpu" class="form-label">CPU</label>
@@ -483,15 +488,20 @@
                         </select>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Type</label>
+                            <div class="form-control-plaintext fw-semibold text-body" id="bulk_type_display">📦 Container</div>
+                            <input type="hidden" id="bulk_type" value="container">
+                        </div>
+                        <div class="col-md-3 mb-3">
                             <label for="bulk_cpu" class="form-label">CPU (cores)</label>
                             <input type="number" class="form-control" id="bulk_cpu" value="2" min="1" max="32" required>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label for="bulk_ram" class="form-label">RAM (GiB)</label>
                             <input type="number" class="form-control" id="bulk_ram" value="4" min="1" max="128" required>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label for="bulk_disk" class="form-label">Disk (GiB)</label>
                             <input type="number" class="form-control" id="bulk_disk" value="20" min="5" max="500" required>
                         </div>

@@ -61,7 +61,7 @@ async def create_instance(
         cpu = data.get("cpu")
         ram = data.get("ram")
         disk = data.get("disk")
-        instance_type = data.get("type", "virtual-machine")
+        instance_type = data.get("type", "container")
 
         # Validate instance name
         is_valid, error = validate_instance_name(name)
@@ -298,7 +298,7 @@ async def bulk_create_instances(
         cpu = data.get("cpu", 2)
         ram = data.get("ram", 4)
         disk = data.get("disk", 20)
-        instance_type = data.get("type", "virtual-machine")
+        instance_type = data.get("type", "container")
 
         is_valid, error = validate_positive_integer(cpu, "CPU", min_val=1, max_val=128)
         if not is_valid:

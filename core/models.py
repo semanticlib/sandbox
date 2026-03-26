@@ -31,7 +31,7 @@ class Classroom(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)  # Classroom name (e.g., "CS101", "Data Science Lab")
     username = Column(String, default="ubuntu")  # Default username for instances
-    image_type = Column(String, default="virtual-machine")  # "virtual-machine" or "container"
+    image_type = Column(String, default="container")  # "container" or "virtual-machine"
     lxd_profile = Column(String, nullable=True)  # LXD profile name (references profiles[].name from LXD)
     image_fingerprint = Column(String, nullable=True)  # LXD image fingerprint
     image_alias = Column(String, nullable=True)  # Image alias (e.g., "ubuntu/24.04")

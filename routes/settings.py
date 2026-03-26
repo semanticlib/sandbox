@@ -179,7 +179,7 @@ async def generate_certificate(request: Request):
 @router.get("/settings/vm/images")
 async def get_available_images(
     db: Session = Depends(get_db),
-    instance_type: str = "virtual-machine"
+    instance_type: str = "container"
 ):
     """Get available LXD images for VM or container creation"""
     lxd_service = LXDService(db)

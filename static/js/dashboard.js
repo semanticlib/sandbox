@@ -51,10 +51,25 @@ function applyClassroom(context) {
     if (!selEl) return;
 
     const classroomId = selEl.value;
-    if (!classroomId) return;  // No classroom selected, leave fields as-is
+    if (!classroomId) {
+        // No classroom selected, show default type
+        const typeDisplay = document.getElementById(prefix + '_type_display');
+        const typeInput = document.getElementById(prefix + '_type');
+        if (typeDisplay) typeDisplay.textContent = '📦 Container';
+        if (typeInput) typeInput.value = 'container';
+        return;
+    }
 
     const c = _classroomCache[classroomId];
     if (!c) return;
+
+    // Update instance type display
+    const typeLabel = c.image_type === 'virtual-machine' ? 'VM' : 'Container';
+    const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
+    const typeDisplay = document.getElementById(prefix + '_type_display');
+    const typeInput = document.getElementById(prefix + '_type');
+    if (typeDisplay) typeDisplay.textContent = typeIcon + ' ' + typeLabel;
+    if (typeInput) typeInput.value = c.image_type || 'container';
 
     // If classroom has an LXD profile, fetch its details and populate CPU/RAM/Disk
     if (c.lxd_profile) {
@@ -163,12 +178,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get classroom and derive type from it
             const classroomEl = form.instance_classroom;
             const classroomId = classroomEl.value;
-            let instanceType = 'virtual-machine';  // default
+            const instanceType = form.instance_type.value;  // From hidden field updated by applyClassroom
             let lxdProfile = null;
-            
+
             if (classroomId && _classroomCache && _classroomCache[classroomId]) {
                 const classroom = _classroomCache[classroomId];
-                instanceType = classroom.image_type || 'virtual-machine';
                 lxdProfile = classroom.lxd_profile;
             }
 
@@ -529,12 +543,11 @@ async function startBulkCreate() {
     // Get classroom and derive type from it
     const classroomEl = document.getElementById('bulk_classroom');
     const classroomId = classroomEl.value;
-    let instanceType = 'virtual-machine';  // default
+    const instanceType = document.getElementById('bulk_type').value;  // From hidden field updated by applyClassroom
     let lxdProfile = null;
-    
+
     if (classroomId && _classroomCache && _classroomCache[classroomId]) {
         const classroom = _classroomCache[classroomId];
-        instanceType = classroom.image_type || 'virtual-machine';
         lxdProfile = classroom.lxd_profile;
     }
 

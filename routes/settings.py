@@ -244,26 +244,3 @@ async def get_available_images(
             "success": False,
             "message": "Failed to fetch images"
         })
-
-
-@router.get("/settings/cloud-init/template")
-async def get_default_cloud_init_template(template_type: str = "container"):
-    """Return the default cloud-init template text for VM or Container."""
-    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE_VM, DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
-    
-    if template_type == "container":
-        template = DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
-    else:
-        template = DEFAULT_CLOUD_INIT_TEMPLATE_VM
-    
-    return JSONResponse({"success": True, "template": template})
-
-
-@router.get("/settings/connection-templates")
-async def get_connection_templates():
-    """Get default SSH config template"""
-    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
-    return JSONResponse({
-        "success": True,
-        "ssh_config_template": DEFAULT_SSH_CONFIG_TEMPLATE
-    })

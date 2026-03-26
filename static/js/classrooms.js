@@ -329,7 +329,7 @@ function showClassroomAlert(type, message) {
 
 async function loadDefaultSSHConfig(targetId) {
     try {
-        const res = await fetch('/settings/connection-templates');
+        const res = await fetch('/classrooms/connection-templates');
         const data = await res.json();
         if (data.success) {
             document.getElementById(targetId).value = data.ssh_config_template;
@@ -545,7 +545,7 @@ function hideNewProfileForm() {
 
 async function loadDefaultCloudInit(targetId, templateType = 'container') {
     try {
-        const res = await fetch(`/settings/cloud-init/template?template_type=${templateType}`);
+        const res = await fetch(`/classrooms/cloud-init/template?template_type=${templateType}`);
         const data = await res.json();
         if (data.success) {
             document.getElementById(targetId).value = data.template;

@@ -58,6 +58,32 @@ async def classrooms_page(
         "username": user.username,
     })
 
+# ============================================================
+# Cloud-init template and SSH config template routes (API)
+# ============================================================
+
+@router.get("/classrooms/cloud-init/template")
+async def get_default_cloud_init_template(template_type: str = "container"):
+    """Return the default cloud-init template text for VM or Container."""
+    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE_VM, DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
+    
+    if template_type == "container":
+        template = DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
+    else:
+        template = DEFAULT_CLOUD_INIT_TEMPLATE_VM
+    
+    return JSONResponse({"success": True, "template": template})
+
+
+@router.get("/classrooms/connection-templates")
+async def get_connection_templates():
+    """Get default SSH config template"""
+    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
+    return JSONResponse({
+        "success": True,
+        "ssh_config_template": DEFAULT_SSH_CONFIG_TEMPLATE
+    })
+
 
 # ============================================================
 # Classroom CRUD (JSON API) - moved from settings.py

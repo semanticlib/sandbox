@@ -477,6 +477,17 @@ async def delete_lxd_profile(name: str, db: Session = Depends(get_db)):
     """Delete an LXD profile (cannot delete profiles in use)."""
     if name == "default":
         return JSONResponse({"success": False, "message": "Cannot delete the 'default' profile"})
+    
+    # Check if profile is used by any classroom
+    from core.models import Classroom
+    using_classrooms = db.query(Classroom).filter(Classroom.lxd_profile == name).all()
+    if using_classrooms:
+        classroom_names = ", ".join([c.name for c in using_classrooms])
+        return JSONResponse({
+            "success": False,
+            "message": f"Cannot delete profile '{name}': It is used by {len(using_classrooms)} classroom(s): {classroom_names}. Please update the classroom(s) to use a different profile first."
+        })
+    
     svc = _lxd_service_connected(db)
     if not svc:
         return JSONResponse({"success": False, "message": "LXD not connected"})

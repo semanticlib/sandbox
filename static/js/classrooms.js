@@ -272,17 +272,37 @@ async function createClassroom() {
     }
 }
 
-async function deleteClassroom() {
-    if (!_currentClassroomId) return;
-    if (!confirm(`Delete this classroom? This cannot be undone.`)) return;
+// Modal for classroom deletion
+let classroomToDelete = null;
 
+function showDeleteClassroomModal() {
+    if (!_currentClassroomId) return;
+    
+    classroomToDelete = _currentClassroomId;
+    const classroomName = document.getElementById('classroom-edit-name').textContent;
+    document.getElementById('deleteClassroomName').textContent = classroomName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteClassroomModal'));
+    modal.show();
+    
+    // Set up confirm button handler
+    document.getElementById('deleteClassroomConfirmBtn').onclick = async function() {
+        modal.hide();
+        await performDeleteClassroom();
+    };
+}
+
+async function performDeleteClassroom() {
+    if (!classroomToDelete) return;
+    
     try {
-        const res = await fetch(`/api/classrooms/${_currentClassroomId}`, {
+        const res = await fetch(`/api/classrooms/${classroomToDelete}`, {
             method: 'DELETE'
         });
         const data = await res.json();
         if (data.success) {
             _currentClassroomId = null;
+            classroomToDelete = null;
             document.getElementById('classroom-edit-card').style.display = 'none';
             document.getElementById('classroom-placeholder').style.display = 'block';
             showClassroomAlert('success', data.message);
@@ -294,6 +314,10 @@ async function deleteClassroom() {
     } catch (err) {
         showClassroomAlert('danger', err.message);
     }
+}
+
+async function deleteClassroom() {
+    showDeleteClassroomModal();
 }
 
 async function showNewClassroomForm() {
@@ -512,17 +536,36 @@ async function createProfile() {
     }
 }
 
-async function deleteProfile() {
-    if (!_currentProfileName || _currentProfileName === 'default') return;
-    if (!confirm(`Delete profile '${_currentProfileName}'? This cannot be undone.`)) return;
+// Modal for profile deletion
+let profileToDelete = null;
 
+function showDeleteProfileModal() {
+    if (!_currentProfileName || _currentProfileName === 'default') return;
+    
+    profileToDelete = _currentProfileName;
+    document.getElementById('deleteProfileName').textContent = _currentProfileName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteProfileModal'));
+    modal.show();
+    
+    // Set up confirm button handler
+    document.getElementById('deleteProfileConfirmBtn').onclick = async function() {
+        modal.hide();
+        await performDeleteProfile();
+    };
+}
+
+async function performDeleteProfile() {
+    if (!profileToDelete || profileToDelete === 'default') return;
+    
     try {
-        const res = await fetch(`/api/lxd/profiles/${encodeURIComponent(_currentProfileName)}`, {
+        const res = await fetch(`/api/lxd/profiles/${encodeURIComponent(profileToDelete)}`, {
             method: 'DELETE'
         });
         const data = await res.json();
         if (data.success) {
             _currentProfileName = null;
+            profileToDelete = null;
             document.getElementById('profile-edit-card').style.display = 'none';
             document.getElementById('profile-placeholder').style.display = 'block';
             showProfileAlert('success', data.message);
@@ -534,6 +577,10 @@ async function deleteProfile() {
     } catch (err) {
         showProfileAlert('danger', err.message);
     }
+}
+
+async function deleteProfile() {
+    showDeleteProfileModal();
 }
 
 function showNewProfileForm() {

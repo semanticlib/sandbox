@@ -428,7 +428,12 @@ async function selectProfile(name) {
     document.getElementById('profile-alert').style.display = 'none';
 
     // Disable delete button for 'default'
-    document.getElementById('profile-delete-btn').disabled = (name === 'default');
+    const deleteBtn = document.getElementById('profile-delete-btn');
+    const isDefault = (name === 'default');
+    deleteBtn.disabled = isDefault;
+    deleteBtn.title = isDefault ? "Cannot delete the 'default' LXD profile" : "Delete this profile";
+    deleteBtn.style.opacity = isDefault ? '0.5' : '1';
+    deleteBtn.style.cursor = isDefault ? 'not-allowed' : 'pointer';
 
     // Fetch full profile details (includes cloud-init text)
     try {

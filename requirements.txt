@@ -1,8 +1,26 @@
-fastapi[standard]
-pylxd
-sqlalchemy
-python-jose[cryptography]
-bcrypt
-psutil
-python-dotenv
-uvicorn[standard]
+# Core dependencies with pinned major versions for production stability
+# Minor and patch versions can be updated for security patches and bug fixes
+
+# Web framework
+fastapi[standard]>=0.115.0,<1.0.0
+
+# LXD API client
+pylxd>=2.3.0,<3.0.0
+
+# Database ORM
+sqlalchemy>=2.0.0,<3.0.0
+
+# JWT authentication
+python-jose[cryptography]>=3.3.0,<4.0.0
+
+# Password hashing
+bcrypt>=4.0.0,<5.0.0
+
+# System metrics
+psutil>=6.0.0,<7.0.0
+
+# Environment variable loading
+python-dotenv>=1.0.0,<2.0.0
+
+# ASGI server
+uvicorn[standard]>=0.30.0,<1.0.0

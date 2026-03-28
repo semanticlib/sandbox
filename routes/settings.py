@@ -219,7 +219,7 @@ async def get_available_images(
             images.append({
                 "fingerprint": img.fingerprint[:12],  # Short fingerprint
                 "full_fingerprint": img.fingerprint,
-                "description": f"{description}",
+                "description": f"{description} {[', '.join(aliases)] if aliases else ''}",
                 "aliases": aliases,
                 "architecture": img.architecture,
                 "type": img.type,

@@ -9,6 +9,7 @@ A web-based interface for managing LXD virtual machines and containers. Designed
 
 ## Features
 
+- **Classroom Management** - Create reusable configurations with predefined images, LXD profiles, and SSH templates
 - **Bulk VM Creation** - Create multiple VMs at once with pre-flight resource checks
 - **One-Click Operations** - Start, stop, or delete all VMs in bulk
 - **SSH ProxyJump** - Secure SSH access with auto-generated jump user and SSH configs

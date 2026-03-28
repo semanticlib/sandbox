@@ -6,9 +6,9 @@
 A web-based interface for managing LXD virtual machines and containers. Designed for classrooms and workshops where you need to quickly create identical VMs for participants and clean them up afterwards.
 
 > [!NOTE]
-> Note the [difference between Docker containers and LXD containers](https://ubuntu.com/blog/lxd-vs-docker).
+> Note the [difference between Docker and LXD containers](https://ubuntu.com/blog/lxd-vs-docker).
 >
-> More often than not, you are better off using just containers. You can create 4-5x more containers than VMs with the same resources. They boot almost instantly and are as powerful as VMs.
+> More often than not, you are better off using just containers. You can create 4-5x more containers than VMs with the same resources. They boot almost instantly and work just like VMs for most purposes.
 
 ![Dashboard](screenshots/dashboard.png)
 
@@ -20,7 +20,7 @@ A web-based interface for managing LXD virtual machines and containers. Designed
 - **SSH ProxyJump** - Secure SSH access with auto-generated jump user and SSH configs
 - **Resource Monitoring** - Real-time CPU, RAM, and disk usage of the host
 - **Cloud-init** - Support for [cloud-init](https://docs.cloud-init.io/en/latest/) to customize instance configuration
-- **Workshop Ready** - Perfect for training environments with temporary instance needs
+- **Workshop Ready** - Perfect for training environments with temporary identical VMs/Containers
 
 ## Requirements
 

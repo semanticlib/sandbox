@@ -108,7 +108,7 @@ async def create_instance(
             classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
         else:
             classroom = db.query(Classroom).first()
-        
+
         # Use classroom settings if available
         if classroom:
             instance_type = classroom.image_type or instance_type
@@ -118,8 +118,10 @@ async def create_instance(
         else:
             vm_username = "root" if instance_type == "container" else "ubuntu"
             image_fingerprint = None
-        
-        cloud_init = lxd_profile.cloud_init if lxd_profile else None
+
+        # Note: lxd_profile is just the profile name (string), not a profile object
+        # Cloud-init is now handled by LXD when the profile is applied to the instance
+        cloud_init = None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,

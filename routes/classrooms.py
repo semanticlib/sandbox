@@ -1,16 +1,13 @@
 """Classrooms page routes - manages Classrooms and LXD Profiles"""
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AdminUser, LXDSettings, Classroom
+from core.templates import templates
 from core.config import settings
 from services.lxd_service import LXDService
-
-templates = Jinja2Templates(directory="templates")
-templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter()
 

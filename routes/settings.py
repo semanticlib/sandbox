@@ -1,17 +1,14 @@
 """Settings routes: LXD connection and password change"""
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AdminUser, LXDSettings
+from core.templates import templates
 from core.config import settings
 from core.security import get_password_hash, verify_password
 from services.lxd_service import LXDService
-
-templates = Jinja2Templates(directory="templates")
-templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter(tags=["settings"])
 

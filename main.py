@@ -2,8 +2,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from jinja2 import filters
 
 from core.database import engine, Base
 from core.config import settings
@@ -28,11 +26,6 @@ app = FastAPI(title=settings.APP_TITLE, lifespan=lifespan)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Setup templates
-templates = Jinja2Templates(directory="templates")
-templates.env.filters['filesizeformat'] = filters.do_filesizeformat
-templates.env.globals['app_title'] = settings.APP_TITLE
 
 
 # ============== Include Routers ==============

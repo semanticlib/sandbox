@@ -85,7 +85,7 @@ Group=${APP_USER}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${APP_DIR}/.env
 
-ExecStart=${APP_DIR}/.venv/bin/uvicorn main:app --host $HOST --port $PORT
+ExecStart=${APP_DIR}/.venv/bin/uvicorn main:app --host \$HOST --port \$PORT
 Restart=always
 RestartSec=3
 

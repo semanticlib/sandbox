@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from core.templates import templates
 from core.database import engine, Base
 from core.config import settings
 

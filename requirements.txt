@@ -3,6 +3,7 @@
 
 # Web framework
 fastapi[standard]>=0.115.0,<1.0.0
+starlette>=0.30.0,<1.0.0  # Required for template rendering compatibility
 
 # LXD API client
 pylxd>=2.3.0,<3.0.0

@@ -56,20 +56,26 @@ motd: |
   This message is displayed to all users when they log in.
 """
 
-def get_cloud_init_template(custom_template: str = None, public_key: str = None, username: str = None) -> str:
+def get_cloud_init_template(custom_template: str = None, public_key: str = None, username: str = None, instance_type: str = "container") -> str:
     """
     Get cloud-init template with placeholders replaced.
 
     Args:
-        custom_template: Custom template from database. If None, uses default VM template.
+        custom_template: Custom template from LXD profile of the classroom. If None, uses default template.
         public_key: SSH public key to use. If None, uses empty string.
         username: Username for the instance. If None, uses 'ubuntu'.
+        instance_type: "virtual-machine" or "container" - determines default template if no custom_template
 
     Returns:
-        Cloud-init template with username and public key replaced
+        Cloud-init template with {username} and {public_key} placeholders replaced
     """
-    # Use custom template or default VM template
-    template = custom_template if custom_template else DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
+    # Select template: custom template takes precedence, otherwise use default based on instance type
+    if custom_template:
+        template = custom_template
+    elif instance_type == "virtual-machine":
+        template = DEFAULT_CLOUD_INIT_TEMPLATE_VM
+    else:
+        template = DEFAULT_CLOUD_INIT_TEMPLATE_CONTAINER
 
     # Use provided values or defaults
     ssh_public_key = public_key if public_key else ''

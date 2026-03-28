@@ -149,14 +149,28 @@ class InstanceTaskService:
                     "limits.memory": f"{ram}GiB",
                 }
 
-                # Add cloud-init user-data, get default cloud-init template if not provided
+                # Determine cloud-init template source and process placeholders
+                # 1. If LXD profile has cloud-init, use it
+                # 2. Otherwise, use default template based on instance type
+                # Then replace placeholders ({username}, {public_key}) with actual values
                 if ssh_keys and ssh_keys.get("public_key"):
-                    # Replace placeholders in cloud-init template
                     from services.cloud_init_service import get_cloud_init_template
+                    
+                    # Get cloud-init from profile if available, otherwise None (uses default)
+                    profile_cloud_init = None
+                    if lxd_profile:
+                        try:
+                            profile = client.profiles.get(lxd_profile)
+                            profile_cloud_init = profile.config.get("user.user-data")
+                        except Exception:
+                            pass  # Profile not found yet, will be applied later
+                    
+                    # Process template (replaces {username} and {public_key} placeholders)
                     instance_config["user.user-data"] = get_cloud_init_template(
-                        custom_template=cloud_init,
+                        custom_template=profile_cloud_init,
                         public_key=ssh_keys["public_key"],
-                        username=vm_username
+                        username=vm_username,
+                        instance_type=instance_type
                     )
 
                 # Build devices (shared structure)
@@ -200,16 +214,21 @@ class InstanceTaskService:
                     client.containers.create(config_data, wait=True)
 
                 # Apply LXD profile if specified (only non-resource settings)
+                # Note: user.user-data (cloud-init) was already processed during instance creation
                 if lxd_profile:
                     try:
                         creation_tasks[task_id]["message"] = f"Applying profile '{lxd_profile}'..."
                         profile = client.profiles.get(lxd_profile)
                         instance = client.instances.get(name)
-                        # Merge profile config, but skip resource limits (cpu, memory) since those are from form
-                        skip_keys = {"limits.cpu", "limits.memory"}
+                        
+                        # Merge profile config, but skip:
+                        # - Resource limits (cpu, memory) - from form
+                        # - user.user-data - already processed with SSH key during creation
+                        skip_keys = {"limits.cpu", "limits.memory", "user.user-data"}
                         for key, value in profile.config.items():
                             if key not in instance.config and key not in skip_keys:
                                 instance.config[key] = value
+                        
                         # Merge profile devices, but skip root disk size since that's from form
                         for dev_name, dev_config in profile.devices.items():
                             if dev_name not in instance.devices:
@@ -217,7 +236,9 @@ class InstanceTaskService:
                                 if dev_name == "root" and "size" in dev_config:
                                     continue
                                 instance.devices[dev_name] = dev_config
+                        
                         instance.save()
+                        creation_tasks[task_id]["message"] = f"Profile '{lxd_profile}' applied successfully"
                     except Exception as profile_error:
                         # Profile application failed, but instance was created
                         creation_tasks[task_id]["message"] = f"Instance created, but profile '{lxd_profile}' failed: {str(profile_error)}"

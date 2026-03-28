@@ -1,17 +1,14 @@
-"""Settings routes: LXD, VM defaults, password change"""
+"""Settings routes: LXD connection and password change"""
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import AdminUser, LXDSettings, VMDefaultSettings, ContainerDefaultSettings
+from core.models import AdminUser, LXDSettings
+from core.templates import templates
 from core.config import settings
 from core.security import get_password_hash, verify_password
 from services.lxd_service import LXDService
-
-templates = Jinja2Templates(directory="templates")
-templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter(tags=["settings"])
 
@@ -20,7 +17,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     """Get current logged-in user from session cookie"""
     from jose import JWTError, jwt
     from core.config import settings
-    
+
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -55,37 +52,19 @@ async def settings_page(
     lxd_success: str = None,
     lxd_error: str = None,
     password_success: str = None,
-    password_error: str = None,
-    vm_success: str = None,
-    vm_error: str = None,
-    container_success: str = None,
-    container_error: str = None,
-    templates_success: str = None
+    password_error: str = None
 ):
-    """Settings page - change password, LXD configuration, and VM/container defaults"""
-    from core.models import ConnectionTemplate
-
+    """Settings page - change password, LXD configuration"""
     lxd_settings = db.query(LXDSettings).first()
-    vm_settings = db.query(VMDefaultSettings).first()
-    container_settings = db.query(ContainerDefaultSettings).first()
-    connection_templates = db.query(ConnectionTemplate).first()
 
     return templates.TemplateResponse("admin/settings.html", {
         "request": request,
         "username": user.username,
         "lxd_settings": lxd_settings,
-        "vm_settings": vm_settings,
-        "container_settings": container_settings,
-        "connection_templates": connection_templates,
         "lxd_success": lxd_success,
         "lxd_error": lxd_error,
         "password_success": password_success,
-        "password_error": password_error,
-        "vm_success": vm_success,
-        "vm_error": vm_error,
-        "container_success": container_success,
-        "container_error": container_error,
-        "templates_success": templates_success
+        "password_error": password_error
     })
 
 
@@ -99,7 +78,6 @@ async def change_password(
     user: AdminUser = Depends(require_auth)
 ):
     """Handle password change"""
-    from core.models import ConnectionTemplate
     from core.security import validate_password_strength
 
     # Validate new password strength
@@ -109,8 +87,6 @@ async def change_password(
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
-            "vm_settings": db.query(VMDefaultSettings).first(),
-            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": error
         })
 
@@ -119,8 +95,6 @@ async def change_password(
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
-            "vm_settings": db.query(VMDefaultSettings).first(),
-            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "New passwords do not match"
         })
 
@@ -129,8 +103,6 @@ async def change_password(
             "request": request,
             "username": user.username,
             "lxd_settings": db.query(LXDSettings).first(),
-            "vm_settings": db.query(VMDefaultSettings).first(),
-            "connection_templates": db.query(ConnectionTemplate).first(),
             "password_error": "Current password is incorrect"
         })
 
@@ -201,153 +173,12 @@ async def generate_certificate(request: Request):
         return JSONResponse({"success": False, "message": "Failed to generate certificate"})
 
 
-@router.post("/settings/vm")
-async def save_vm_settings(
-    request: Request,
-    username: str = Form(...),
-    cpu: int = Form(...),
-    memory: int = Form(...),
-    disk: int = Form(...),
-    swap: int = Form(...),
-    image_fingerprint: str = Form(""),
-    image_alias: str = Form(""),
-    image_description: str = Form(""),
-    cloud_init: str = Form(""),
-    db: Session = Depends(get_db)
-):
-    """Save default VM settings"""
-    # Validate username
-    from core.validators import validate_username, validate_positive_integer
-
-    is_valid, error = validate_username(username)
-    if not is_valid:
-        return RedirectResponse(
-            url=f"/settings?vm_error={error}",
-            status_code=303
-        )
-
-    # Validate cloud-init template if provided
-    if cloud_init.strip():
-        from services.cloud_init_service import validate_cloud_init_template
-        is_valid, error_msg = validate_cloud_init_template(cloud_init)
-        if not is_valid:
-            return RedirectResponse(
-                url=f"/settings?vm_error={error_msg}",
-                status_code=303
-            )
-
-    settings = db.query(VMDefaultSettings).first()
-
-    if settings:
-        settings.username = username
-        settings.cpu = cpu
-        settings.memory = memory
-        settings.disk = disk
-        settings.swap = swap
-        settings.image_fingerprint = image_fingerprint if image_fingerprint else None
-        settings.image_alias = image_alias if image_alias else None
-        settings.image_description = image_description if image_description else None
-        settings.cloud_init = cloud_init if cloud_init else None
-    else:
-        settings = VMDefaultSettings(
-            username=username,
-            cpu=cpu,
-            memory=memory,
-            disk=disk,
-            swap=swap,
-            image_fingerprint=image_fingerprint if image_fingerprint else None,
-            image_alias=image_alias if image_alias else None,
-            image_description=image_description if image_description else None,
-            cloud_init=cloud_init if cloud_init else None
-        )
-        db.add(settings)
-
-    db.commit()
-
-    return RedirectResponse(url="/settings?vm_success=VM defaults saved successfully", status_code=303)
-
-
-@router.post("/settings/container")
-async def save_container_settings(
-    request: Request,
-    username: str = Form(...),
-    cpu: int = Form(...),
-    memory: int = Form(...),
-    disk: int = Form(...),
-    image_fingerprint: str = Form(""),
-    image_alias: str = Form(""),
-    image_description: str = Form(""),
-    cloud_init: str = Form(""),
-    db: Session = Depends(get_db)
-):
-    """Save default container settings"""
-    # Validate username
-    from core.validators import validate_username
-
-    is_valid, error = validate_username(username)
-    if not is_valid:
-        return RedirectResponse(
-            url=f"/settings?container_error={error}",
-            status_code=303
-        )
-
-    # Validate cloud-init template if provided
-    if cloud_init.strip():
-        from services.cloud_init_service import validate_cloud_init_template
-        is_valid, error_msg = validate_cloud_init_template(cloud_init)
-        if not is_valid:
-            return RedirectResponse(
-                url=f"/settings?container_error={error_msg}",
-                status_code=303
-            )
-
-    settings = db.query(ContainerDefaultSettings).first()
-
-    if settings:
-        settings.username = username
-        settings.cpu = cpu
-        settings.memory = memory
-        settings.disk = disk
-        settings.image_fingerprint = image_fingerprint if image_fingerprint else None
-        settings.image_alias = image_alias if image_alias else None
-        settings.image_description = image_description if image_description else None
-        settings.cloud_init = cloud_init if cloud_init else None
-    else:
-        settings = ContainerDefaultSettings(
-            username=username,
-            cpu=cpu,
-            memory=memory,
-            disk=disk,
-            image_fingerprint=image_fingerprint if image_fingerprint else None,
-            image_alias=image_alias if image_alias else None,
-            image_description=image_description if image_description else None,
-            cloud_init=cloud_init if cloud_init else None
-        )
-        db.add(settings)
-
-    db.commit()
-
-    return RedirectResponse(url="/settings?container_success=Container defaults saved successfully", status_code=303)
-
-
-@router.get("/settings/vm/template")
-async def get_cloud_init_template():
-    """Get the default cloud-init template"""
-    from services.cloud_init_service import DEFAULT_CLOUD_INIT_TEMPLATE
-    return JSONResponse({
-        "success": True,
-        "template": DEFAULT_CLOUD_INIT_TEMPLATE
-    })
-
-
 @router.get("/settings/vm/images")
 async def get_available_images(
     db: Session = Depends(get_db),
-    instance_type: str = "virtual-machine"
+    instance_type: str = "container"
 ):
     """Get available LXD images for VM or container creation"""
-    from services.lxd_service import LXDService
-
     lxd_service = LXDService(db)
     lxd_service.get_client()
 
@@ -388,7 +219,7 @@ async def get_available_images(
             images.append({
                 "fingerprint": img.fingerprint[:12],  # Short fingerprint
                 "full_fingerprint": img.fingerprint,
-                "description": f"{description}",
+                "description": f"{description} {[', '.join(aliases)] if aliases else ''}",
                 "aliases": aliases,
                 "architecture": img.architecture,
                 "type": img.type,
@@ -410,41 +241,3 @@ async def get_available_images(
             "success": False,
             "message": "Failed to fetch images"
         })
-
-
-@router.get("/settings/connection-templates")
-async def get_connection_templates(db: Session = Depends(get_db)):
-    """Get connection templates (SSH config)"""
-    from core.models import ConnectionTemplate
-    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
-
-    templates = db.query(ConnectionTemplate).first()
-
-    return JSONResponse({
-        "success": True,
-        "ssh_config_template": templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
-    })
-
-
-@router.post("/settings/connection-templates")
-async def save_connection_templates(
-    request: Request,
-    ssh_config_template: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    """Save connection templates"""
-    from core.models import ConnectionTemplate
-
-    templates = db.query(ConnectionTemplate).first()
-
-    if templates:
-        templates.ssh_config_template = ssh_config_template
-    else:
-        templates = ConnectionTemplate(
-            ssh_config_template=ssh_config_template
-        )
-        db.add(templates)
-
-    db.commit()
-
-    return RedirectResponse(url="/settings?templates_success=Connection templates saved successfully", status_code=303)

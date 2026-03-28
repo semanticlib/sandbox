@@ -143,36 +143,36 @@
     </div>
     <div class="card-body">
         <form id="create-instance-form" class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="instance_name" class="form-label">Name</label>
                 <input type="text" class="form-control" id="instance_name" name="name" placeholder="my-vm" required>
             </div>
-            <div class="col-md-2">
-                <label for="instance_cpu" class="form-label">CPU (cores)</label>
-                <input type="number" class="form-control" id="instance_cpu" name="cpu"
-                       value="{{ vm_defaults.cpu if vm_defaults else 2 }}"
-                       min="1" max="32" required>
-            </div>
-            <div class="col-md-2">
-                <label for="instance_ram" class="form-label">RAM (GiB)</label>
-                <input type="number" class="form-control" id="instance_ram" name="ram"
-                       value="{{ vm_defaults.memory if vm_defaults else 4 }}"
-                       min="1" max="128" required>
-            </div>
-            <div class="col-md-2">
-                <label for="instance_disk" class="form-label">Disk (GiB)</label>
-                <input type="number" class="form-control" id="instance_disk" name="disk"
-                       value="{{ vm_defaults.disk if vm_defaults else 20 }}"
-                       min="5" max="500" required>
-            </div>
-            <div class="col-md-2">
-                <label for="instance_type" class="form-label">Type</label>
-                <select class="form-select" id="instance_type" name="type">
-                    <option value="container">Container</option>
-                    <option value="virtual-machine">VM</option>
+            <div class="col-md-3">
+                <label for="instance_classroom" class="form-label">Classroom</label>
+                <select class="form-select" id="instance_classroom" onchange="applyClassroom('instance')">
+                    <option value="">— Select a classroom —</option>
                 </select>
             </div>
+            <div class="col-md-2">
+                <label class="form-label">
+                    Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                </label>
+                <div class="form-control-plaintext fw-semibold" id="instance_type_display">📦 Container</div>
+                <input type="hidden" id="instance_type" name="type" value="container">
+            </div>
             <div class="col-md-1">
+                <label for="instance_cpu" class="form-label">CPU</label>
+                <input type="number" class="form-control" id="instance_cpu" name="cpu" value="2" min="1" max="32" required>
+            </div>
+            <div class="col-md-1">
+                <label for="instance_ram" class="form-label">RAM (GiB)</label>
+                <input type="number" class="form-control" id="instance_ram" name="ram" value="4" min="1" max="128" required>
+            </div>
+            <div class="col-md-1">
+                <label for="instance_disk" class="form-label">Disk (GiB)</label>
+                <input type="number" class="form-control" id="instance_disk" name="disk" value="20" min="5" max="500" required>
+            </div>
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="bi bi-plus-lg"></i> Create
                 </button>
@@ -305,7 +305,7 @@
                             </div>
                         </td>
                         <td>
-                            {% set disabled = instance.ip == 'N/A' %}
+                            {% set disabled = instance.ip == 'N/A' or instance.ip == '127.0.0.1' %}
 
                             <span {% if disabled %}title="IP not available - start the VM first"{% endif %}>
                                 <a {% if not disabled %}href="/instances/{{ instance.name }}/download-ssh-config"{% endif %} 
@@ -483,29 +483,41 @@
                             <code>test-{a-c}</code> → test-a, test-b, test-c
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label for="bulk_classroom" class="form-label">Classroom</label>
+                        <select class="form-select" id="bulk_classroom" onchange="applyClassroom('bulk')">
+                            <option value="">— Select a classroom —</option>
+                        </select>
+                    </div>
                     <div class="row">
                         <div class="col-md-3 mb-3">
+                            <label class="form-label">
+                                Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                            </label>
+                            <div class="form-control-plaintext fw-semibold" id="bulk_type_display">📦 Container</div>
+                            <input type="hidden" id="bulk_type" value="container">
+                        </div>
+                        <div class="col-md-3 mb-3">
                             <label for="bulk_cpu" class="form-label">CPU (cores)</label>
-                            <input type="number" class="form-control" id="bulk_cpu" 
-                                   value="{{ vm_defaults.cpu if vm_defaults else 2 }}" min="1" max="32" required>
+                            <input type="number" class="form-control" id="bulk_cpu" value="2" min="1" max="32" required>
                         </div>
                         <div class="col-md-3 mb-3">
                             <label for="bulk_ram" class="form-label">RAM (GiB)</label>
-                            <input type="number" class="form-control" id="bulk_ram" 
-                                   value="{{ vm_defaults.memory if vm_defaults else 4 }}" min="1" max="128" required>
+                            <input type="number" class="form-control" id="bulk_ram" value="4" min="1" max="128" required>
                         </div>
                         <div class="col-md-3 mb-3">
                             <label for="bulk_disk" class="form-label">Disk (GiB)</label>
-                            <input type="number" class="form-control" id="bulk_disk" 
-                                   value="{{ vm_defaults.disk if vm_defaults else 20 }}" min="5" max="500" required>
+                            <input type="number" class="form-control" id="bulk_disk" value="20" min="5" max="500" required>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <label for="bulk_type" class="form-label">Type</label>
-                            <select class="form-select" id="bulk_type">
-                                <option value="container">Container</option>
-                                <option value="virtual-machine">VM</option>
-                            </select>
-                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="bulk_allow_overcommit">
+                        <label class="form-check-label" for="bulk_allow_overcommit">
+                            Allow over-committing resources (for high-density container deployments)
+                        </label>
+                        <small class="form-text text-muted d-block mt-1">
+                            <i class="bi bi-info-circle"></i> Containers can run 4-5x denser than VMs. Enable this to allow higher CPU/RAM overcommitment ratios.
+                        </small>
                     </div>
                 </form>
                 <div id="bulk-preflight-result" class="mt-3"></div>
@@ -552,7 +564,7 @@
 
 {% block extra_js %}
 <script src="/static/js/vm-support.js?v=1" type="module"></script>
-<script src="/static/js/dashboard.js?v=6"></script>
+<script src="/static/js/dashboard.js?v=9"></script>
 <script type="module">
     import { disableVMOptionsIfUnsupported } from '/static/js/vm-support.js';
     

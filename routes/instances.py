@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import AdminUser, LXDSettings, VMDefaultSettings
+from core.models import AdminUser, LXDSettings, Classroom
 from core.validators import validate_instance_name, validate_positive_integer
 from services.lxd_service import LXDService
 from services.instance_tasks import InstanceTaskService, creation_tasks
@@ -61,7 +61,7 @@ async def create_instance(
         cpu = data.get("cpu")
         ram = data.get("ram")
         disk = data.get("disk")
-        instance_type = data.get("type", "virtual-machine")
+        instance_type = data.get("type", "container")
 
         # Validate instance name
         is_valid, error = validate_instance_name(name)
@@ -101,25 +101,27 @@ async def create_instance(
                 "message": f"A system user '{name}' already exists. Please choose a different instance name."
             })
 
-        # Get VM or container default settings based on instance type
-        if instance_type == "container":
-            from core.models import ContainerDefaultSettings
-            instance_settings = db.query(ContainerDefaultSettings).first()
-            cloud_init_template = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
-            vm_swap = 2  # Not used for containers
-            vm_username = instance_settings.username if instance_settings else "root"
-            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+        # Get classroom from request if provided, otherwise use first classroom
+        classroom_id = data.get("classroom_id")
+        lxd_profile = data.get("lxd_profile")
+        if classroom_id:
+            classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
         else:
-            from core.models import VMDefaultSettings
-            instance_settings = db.query(VMDefaultSettings).first()
-            cloud_init_template = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
-            vm_swap = instance_settings.swap if instance_settings and instance_settings.swap else 2
-            vm_username = instance_settings.username if instance_settings and instance_settings.username else "ubuntu"
-            image_fingerprint = instance_settings.image_fingerprint if instance_settings and instance_settings.image_fingerprint else None
+            classroom = db.query(Classroom).first()
 
-        # Pass the raw template (with placeholders) to the background task
-        # The background task will generate SSH keys and process the template
-        cloud_init = cloud_init_template
+        # Use classroom settings if available
+        if classroom:
+            instance_type = classroom.image_type or instance_type
+            vm_username = classroom.username
+            image_fingerprint = classroom.image_fingerprint
+            lxd_profile = lxd_profile or classroom.lxd_profile
+        else:
+            vm_username = "root" if instance_type == "container" else "ubuntu"
+            image_fingerprint = None
+
+        # Note: lxd_profile is just the profile name (string), not a profile object
+        # Cloud-init is now handled by LXD when the profile is applied to the instance
+        cloud_init = None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,
@@ -138,9 +140,9 @@ async def create_instance(
             instance_type=instance_type,
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
-            vm_swap=vm_swap,
             vm_username=vm_username,
-            image_fingerprint=image_fingerprint
+            image_fingerprint=image_fingerprint,
+            lxd_profile=lxd_profile
         )
 
         return JSONResponse({
@@ -215,6 +217,8 @@ async def bulk_preflight_check(
     cpu: int = 2,
     ram: int = 4,
     disk: int = 20,
+    type: str = "container",
+    allow_overcommit: bool = False,
     db: Session = Depends(get_db),
     user: AdminUser = Depends(require_auth)
 ):
@@ -235,9 +239,11 @@ async def bulk_preflight_check(
     checks = BulkOperationService.check_preflight(
         db,
         instance_names=instance_names if instance_names else None,
-        cpu_per_vm=cpu,
-        ram_per_vm=ram,
-        disk_per_vm=disk
+        cpu_per_instance=cpu,
+        ram_per_instance=ram,
+        disk_per_instance=disk,
+        instance_type=type,
+        allow_overcommit=allow_overcommit
     )
     return JSONResponse(checks)
 
@@ -297,7 +303,7 @@ async def bulk_create_instances(
         cpu = data.get("cpu", 2)
         ram = data.get("ram", 4)
         disk = data.get("disk", 20)
-        instance_type = data.get("type", "virtual-machine")
+        instance_type = data.get("type", "container")
 
         is_valid, error = validate_positive_integer(cpu, "CPU", min_val=1, max_val=128)
         if not is_valid:
@@ -329,21 +335,25 @@ async def bulk_create_instances(
                     "message": f"A system user '{name}' already exists. Please choose different instance names."
                 })
 
-        # Get VM or container default settings based on instance type
-        if instance_type == "container":
-            from core.models import ContainerDefaultSettings
-            instance_settings = db.query(ContainerDefaultSettings).first()
-            cloud_init = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
-            vm_swap = 2  # Not used for containers
-            vm_username = instance_settings.username if instance_settings else "root"
-            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+        # Get classroom from request if provided, otherwise use first classroom
+        classroom_id = data.get("classroom_id")
+        lxd_profile = data.get("lxd_profile")
+        if classroom_id:
+            classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
         else:
-            from core.models import VMDefaultSettings
-            instance_settings = db.query(VMDefaultSettings).first()
-            cloud_init = instance_settings.cloud_init if instance_settings and instance_settings.cloud_init else None
-            vm_swap = instance_settings.swap if instance_settings and instance_settings.swap else 2
-            vm_username = instance_settings.username if instance_settings else "ubuntu"
-            image_fingerprint = instance_settings.image_fingerprint if instance_settings else None
+            classroom = db.query(Classroom).first()
+        
+        # Use classroom settings if available
+        if classroom:
+            instance_type = classroom.image_type or instance_type
+            vm_username = classroom.username
+            image_fingerprint = classroom.image_fingerprint
+            lxd_profile = lxd_profile or classroom.lxd_profile
+        else:
+            vm_username = "ubuntu"
+            image_fingerprint = None
+        
+        cloud_init = None  # Cloud-init is now handled via LXD profiles
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,
@@ -362,9 +372,9 @@ async def bulk_create_instances(
             instance_type=instance_type,
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
-            vm_swap=vm_swap,
             vm_username=vm_username,
-            image_fingerprint=image_fingerprint
+            image_fingerprint=image_fingerprint,
+            lxd_profile=lxd_profile
         )
 
         return JSONResponse({
@@ -693,7 +703,7 @@ async def download_ssh_config(
     from services.ssh_key_service import get_instance_keys
     from services.ssh_config_service import create_ssh_config_files, DEFAULT_SSH_CONFIG_TEMPLATE
     from services.jump_user_service import create_jump_user
-    from core.models import ConnectionTemplate
+    from core.models import Classroom
 
     # Get SSH keys
     keys = get_instance_keys(instance_name)
@@ -716,14 +726,12 @@ async def download_ssh_config(
             "message": f"Failed to setup jump user: {jump_user_result.get('message')}"
         })
 
-    # Get instance settings for username (used for VM login, not jump user)
-    instance_type = "virtual-machine"  # Default, could be fetched from LXD if needed
-    vm_settings = db.query(VMDefaultSettings).first()
-    username = vm_settings.username if vm_settings else "ubuntu"
+    # Get classroom settings for username (used for VM login, not jump user)
+    classroom = db.query(Classroom).first()
+    username = classroom.username if classroom else "ubuntu"
 
-    # Get connection templates from DB
-    templates = db.query(ConnectionTemplate).first()
-    ssh_template = templates.ssh_config_template if templates and templates.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
+    # Get SSH config template from classroom
+    ssh_template = classroom.ssh_config_template if classroom and classroom.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
 
     # Get VM IP address
     from services.lxd_service import LXDService

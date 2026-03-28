@@ -2,17 +2,14 @@
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import AdminUser
+from core.templates import templates
 from core.security import get_password_hash, verify_password, create_access_token
 from core.config import settings
 from core.rate_limiter import login_rate_limiter
-
-templates = Jinja2Templates(directory="templates")
-templates.env.globals['app_title'] = settings.APP_TITLE
 
 router = APIRouter()
 

@@ -9,6 +9,7 @@ A web-based interface for managing LXD virtual machines and containers. Designed
 
 ## Features
 
+- **Classroom Management** - Create reusable configurations with predefined images, LXD profiles, and SSH templates
 - **Bulk VM Creation** - Create multiple VMs at once with pre-flight resource checks
 - **One-Click Operations** - Start, stop, or delete all VMs in bulk
 - **SSH ProxyJump** - Secure SSH access with auto-generated jump user and SSH configs
@@ -19,7 +20,7 @@ A web-based interface for managing LXD virtual machines and containers. Designed
 ## Requirements
 
 - Linux host with [LXD installed](https://canonical.com/lxd/install) and configured (`lxd init`)
-- Python 3.10+
+- Python 3.10+ with `venv` module
 - 50GB+ free disk space (depending on VM count)
 
 ## Pre-setup
@@ -35,7 +36,9 @@ This step will download the `ubuntu:24.04` image. The Sandbox app will only show
 ## Installation
 
 ```bash
-git clone https://github.com/semanticlib/sandbox.git
+cd /opt
+sudo git clone https://github.com/semanticlib/sandbox.git
+sudo chown -R $(whoami):$(whoami) sandbox
 cd sandbox
 python -m venv .venv
 source .venv/bin/activate
@@ -43,26 +46,64 @@ pip install -r requirements.txt
 cp env.example .env
 SECRET_KEY=$(openssl rand -hex 32)
 sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" .env
-# Update the LXD Host IP in HOST_SERVER_IP variable in .env file
-uvicorn main:app
+```
+
+Also update the `HOST_SERVER_IP` variable in `.env` file with your LXD host IP.
+
+**Test run**
+
+```bash
+python main.py
 ```
 
 **Secure Access using SSH Tunnel**
 
-Create an SSH Tunnel to access the app.
+From your local machine, create an SSH Tunnel to access the app.
 
 ```bash
 ssh -L 8000:localhost:8000 user@<host-ip>
 ```
 
-Open `http://localhost:8000` in your browser
+Open `http://localhost:8000` in your browser and proceed with the initial setup.
 
-**Custom Port:**
+## Production Deployment (Systemd)
 
-To use a different port, set `PORT` in `.env`:
+To run the application in production using `systemd`, use the following commands:
+
 ```bash
-PORT=9000
+export APP_DIR=/opt/sandbox # Adjust if you want to install in a different directory
+export APP_USER=$(whoami) # Adjust if you want to run as a different user
+sudo tee /etc/systemd/system/sandbox.service > /dev/null <<EOF
+[Unit]
+Description=Sandbox Manager Application
+After=network.target
+
+[Service]
+Type=exec
+User=${APP_USER}
+Group=${APP_USER}
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+
+ExecStart=${APP_DIR}/.venv/bin/uvicorn main:app --host \$HOST --port \$PORT
+Restart=always
+RestartSec=3
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable sandbox
+sudo systemctl start sandbox
 ```
+
+Troubleshoot: Check logs with `sudo journalctl -u sandbox -f` and fix any issues.
 
 > [!IMPORTANT]
 > Auth cookies require HTTPS (`secure=True` flag). The login sessions won't persist without HTTPS.

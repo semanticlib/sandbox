@@ -2,7 +2,7 @@
 # 
 # Prerequisites:
 #   1. Install Caddy: https://caddyserver.com/docs/install
-#   2. Point your domain to this server (DNS A record)
+#   2. Point your domain to this server (DNS A record or CNAME pointing to this server's IP)
 #   3. Ensure ports 80 and 443 are open
 #
 # Usage:
@@ -15,7 +15,6 @@ sandbox.example.com {
     # Automatic HTTPS with Let's Encrypt
     reverse_proxy localhost:8000
 
-    # Increase request body size for cloud-init ISO uploads
     request_body {
 		max_size 1MB
 	}
@@ -34,7 +33,6 @@ sandbox.example.com {
     header {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
-        X-XSS-Protection "1; mode=block"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
     

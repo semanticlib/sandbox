@@ -35,18 +35,21 @@ class BulkOperationService:
             del bulk_operations[op_id]
 
     @staticmethod
-    def check_preflight(db, instance_names: List[str] = None, 
-                        cpu_per_vm: int = 2, ram_per_vm: int = 4, 
-                        disk_per_vm: int = 20, required_disk_gb: float = 50) -> Dict[str, Any]:
+    def check_preflight(db, instance_names: List[str] = None,
+                        cpu_per_instance: int = 2, ram_per_instance: int = 4,
+                        disk_per_instance: int = 20, instance_type: str = "container",
+                        allow_overcommit: bool = False, required_disk_gb: float = 50) -> Dict[str, Any]:
         """
         Run pre-flight checks before bulk operations.
 
         Args:
             db: Database session
             instance_names: List of instance names to create (for capacity check)
-            cpu_per_vm: CPU cores per VM
-            ram_per_vm: RAM in GB per VM
-            disk_per_vm: Disk in GB per VM
+            cpu_per_instance: CPU cores per instance
+            ram_per_instance: RAM in GB per instance
+            disk_per_instance: Disk in GB per instance
+            instance_type: "container" or "virtual-machine" (affects density calculations)
+            allow_overcommit: If True, allow over-provisioning beyond normal limits
             required_disk_gb: Minimum required free disk space after creation
 
         Returns:
@@ -59,6 +62,11 @@ class BulkOperationService:
         }
 
         num_instances = len(instance_names) if instance_names else 0
+        is_container = instance_type == "container"
+        
+        # Container density factor: containers can be 4-5x more dense than VMs
+        # because they share the kernel and have less overhead
+        density_factor = 4.0 if is_container else 1.0
 
         # Check LXD connection
         try:
@@ -92,14 +100,22 @@ class BulkOperationService:
 
         # Calculate resource requirements
         if num_instances > 0:
-            total_cpu_needed = num_instances * cpu_per_vm
-            total_ram_needed = num_instances * ram_per_vm
-            total_disk_needed = num_instances * disk_per_vm
+            total_cpu_needed = num_instances * cpu_per_instance
+            total_ram_needed = num_instances * ram_per_instance
+            total_disk_needed = num_instances * disk_per_instance
             checks["resources_requested"] = {
                 "instances": num_instances,
                 "cpu": total_cpu_needed,
                 "ram_gb": total_ram_needed,
                 "disk_gb": total_disk_needed
+            }
+            # Effective resource needs accounting for container density
+            effective_cpu_needed = total_cpu_needed / density_factor
+            effective_ram_needed = total_ram_needed / density_factor
+            checks["effective_resources"] = {
+                "cpu": round(effective_cpu_needed, 1),
+                "ram_gb": round(effective_ram_needed, 1),
+                "density_factor": density_factor
             }
 
         # Check disk space
@@ -141,21 +157,29 @@ class BulkOperationService:
             available_ram = psutil.virtual_memory().available / (1024 ** 3)
             checks["ram_total_gb"] = round(total_ram, 2)
             checks["ram_available_gb"] = round(available_ram, 2)
-            
+
             if num_instances > 0:
-                ram_after = available_ram - total_ram_needed
+                # Use effective RAM for containers (lower due to density)
+                effective_ram = effective_ram_needed if is_container else total_ram_needed
+                ram_after = available_ram - effective_ram
                 checks["ram_after_creation_gb"] = round(ram_after, 2)
-                
+
                 # Reserve 2GB for host system
                 min_ram_after = 2.0
-                
+
                 if ram_after < min_ram_after:
-                    checks["errors"].append(
-                        f"Insufficient RAM: {available_ram:.1f} GB available, "
-                        f"{total_ram_needed} GB needed for {num_instances} VMs, "
-                        f"only {ram_after:.1f} GB would remain (minimum {min_ram_after} GB for host recommended)"
-                    )
-                    checks["passed"] = False
+                    if allow_overcommit:
+                        checks["warnings"].append(
+                            f"⚠️ Over-committing RAM: {available_ram:.1f} GB available, "
+                            f"{effective_ram:.1f} GB requested, only {ram_after:.1f} GB would remain"
+                        )
+                    else:
+                        checks["errors"].append(
+                            f"Insufficient RAM: {available_ram:.1f} GB available, "
+                            f"{effective_ram:.1f} GB needed for {num_instances} {'containers' if is_container else 'VMs'}, "
+                            f"only {ram_after:.1f} GB would remain (minimum {min_ram_after} GB for host recommended)"
+                        )
+                        checks["passed"] = False
                 elif ram_after < min_ram_after * 2:
                     checks["warnings"].append(
                         f"RAM will be low after creation: {ram_after:.1f} GB remaining for host"
@@ -170,21 +194,37 @@ class BulkOperationService:
             import psutil
             cpu_count = psutil.cpu_count(logical=True)
             checks["cpu_logical_cores"] = cpu_count
-            
+
             if num_instances > 0:
+                # Use effective CPU for containers (lower due to density)
+                effective_cpu = effective_cpu_needed if is_container else total_cpu_needed
                 # Allow overcommitment but warn if too aggressive
-                cpu_ratio = total_cpu_needed / cpu_count if cpu_count > 0 else 999
-                
-                if cpu_ratio > 4:
-                    checks["warnings"].append(
-                        f"High CPU overcommitment: {total_cpu_needed} vCPUs requested "
-                        f"on {cpu_count} core system ({cpu_ratio:.1f}x overcommit)"
-                    )
-                elif cpu_ratio > 2:
-                    checks["warnings"].append(
-                        f"Moderate CPU overcommitment: {total_cpu_needed} vCPUs "
-                        f"on {cpu_count} core system ({cpu_ratio:.1f}x overcommit)"
-                    )
+                cpu_ratio = effective_cpu / cpu_count if cpu_count > 0 else 999
+
+                if allow_overcommit:
+                    # More lenient thresholds when overcommit is allowed
+                    if cpu_ratio > 8:
+                        checks["warnings"].append(
+                            f"⚠️ Very high CPU overcommitment: {effective_cpu:.1f} vCPUs requested "
+                            f"on {cpu_count} core system ({cpu_ratio:.1f}x overcommit)"
+                        )
+                    elif cpu_ratio > 4:
+                        checks["warnings"].append(
+                            f"⚠️ High CPU overcommitment: {effective_cpu:.1f} vCPUs requested "
+                            f"on {cpu_count} core system ({cpu_ratio:.1f}x overcommit)"
+                        )
+                else:
+                    # Normal thresholds
+                    if cpu_ratio > 4:
+                        checks["warnings"].append(
+                            f"High CPU overcommitment: {effective_cpu:.1f} vCPUs requested "
+                            f"on {cpu_count} core system ({cpu_ratio:.1f}x overcommit)"
+                        )
+                    elif cpu_ratio > 2:
+                        checks["warnings"].append(
+                            f"Moderate CPU overcommitment: {effective_cpu:.1f} vCPUs "
+                            f"on {cpu_count} core system ({cpu_ratio:.1f}x overcommit)"
+                        )
         except ImportError:
             checks["warnings"].append("psutil not installed - skipping CPU check")
         except Exception as e:
@@ -208,13 +248,13 @@ class BulkOperationService:
         instance_type: str,
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
-        vm_swap: int = 2,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None
+        image_fingerprint: Optional[str] = None,
+        lxd_profile: Optional[str] = None
     ):
         """
         Background task to create multiple instances.
-        
+
         Args:
             op_id: Operation ID for tracking
             instance_names: List of instance names to create
@@ -224,7 +264,6 @@ class BulkOperationService:
             instance_type: "virtual-machine" or "container"
             lxd_settings: LXD connection settings
             cloud_init: Cloud-init template
-            vm_swap: Swap size in GB
             vm_username: Default username for VMs
             image_fingerprint: Optional LXD image fingerprint
         """
@@ -262,9 +301,9 @@ class BulkOperationService:
                     instance_type=instance_type,
                     lxd_settings=lxd_settings,
                     cloud_init=cloud_init,
-                    vm_swap=vm_swap,
                     vm_username=vm_username,
-                    image_fingerprint=image_fingerprint
+                    image_fingerprint=image_fingerprint,
+                    lxd_profile=lxd_profile
                 )
                 
                 # Wait for this instance to complete before starting next
@@ -334,26 +373,26 @@ class BulkOperationService:
         instance_type: str,
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
-        vm_swap: int = 2,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None
+        image_fingerprint: Optional[str] = None,
+        lxd_profile: Optional[str] = None
     ) -> str:
         """
         Start a bulk creation operation and return operation ID.
-        
+
         Returns:
             Operation ID for tracking progress
         """
         op_id = str(uuid.uuid4())
-        
+
         thread = threading.Thread(
             target=BulkOperationService.bulk_create_instances,
-            args=(op_id, instance_names, cpu, ram, disk, instance_type, 
-                  lxd_settings, cloud_init, vm_swap, vm_username, image_fingerprint)
+            args=(op_id, instance_names, cpu, ram, disk, instance_type,
+                  lxd_settings, cloud_init, vm_username, image_fingerprint, lxd_profile)
         )
         thread.daemon = True
         thread.start()
-        
+
         return op_id
 
     @staticmethod

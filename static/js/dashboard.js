@@ -1,6 +1,96 @@
 // Instance creation with progress tracking
 let createPollingInterval = null;
 
+// ============== Classroom Picker ==============
+
+let _classroomCache = null;  // { id -> { name, image_type, lxd_profile, ... } }
+
+async function loadClassrooms() {
+    try {
+        const res = await fetch('/api/classrooms');
+        const data = await res.json();
+        if (!data.success || !data.classrooms.length) return;
+
+        _classroomCache = {};
+        data.classrooms.forEach(c => { _classroomCache[c.id] = c; });
+
+        const selectors = [
+            document.getElementById('instance_classroom'),
+            document.getElementById('bulk_classroom'),
+        ];
+
+        selectors.forEach(sel => {
+            if (!sel) return;
+            // Keep the placeholder option, clear the rest
+            while (sel.options.length > 1) sel.remove(1);
+            data.classrooms.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
+                const profileInfo = c.lxd_profile ? ` • ${c.lxd_profile}` : '';
+                opt.textContent = `${typeIcon} ${c.name}${profileInfo}`;
+                sel.appendChild(opt);
+            });
+        });
+    } catch(e) {
+        console.warn('Could not load classrooms:', e.message);
+    }
+}
+
+/**
+ * Apply selected classroom settings to form fields.
+ * @param {'instance'|'bulk'} context
+ */
+function applyClassroom(context) {
+    if (!_classroomCache) return;
+
+    const prefix = context === 'bulk' ? 'bulk' : 'instance';
+    const selEl = document.getElementById(
+        context === 'bulk' ? 'bulk_classroom' : 'instance_classroom'
+    );
+    if (!selEl) return;
+
+    const classroomId = selEl.value;
+    if (!classroomId) {
+        // No classroom selected, show default type
+        const typeDisplay = document.getElementById(prefix + '_type_display');
+        const typeInput = document.getElementById(prefix + '_type');
+        if (typeDisplay) typeDisplay.textContent = '📦 Container';
+        if (typeInput) typeInput.value = 'container';
+        return;
+    }
+
+    const c = _classroomCache[classroomId];
+    if (!c) return;
+
+    // Update instance type display
+    const typeLabel = c.image_type === 'virtual-machine' ? 'VM' : 'Container';
+    const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
+    const typeDisplay = document.getElementById(prefix + '_type_display');
+    const typeInput = document.getElementById(prefix + '_type');
+    if (typeDisplay) typeDisplay.textContent = typeIcon + ' ' + typeLabel;
+    if (typeInput) typeInput.value = c.image_type || 'container';
+
+    // If classroom has an LXD profile, fetch its details and populate CPU/RAM/Disk
+    if (c.lxd_profile) {
+        fetch(`/api/lxd/profiles/${encodeURIComponent(c.lxd_profile)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.profile) {
+                    const p = data.profile;
+                    const cpuEl = document.getElementById(prefix === 'bulk' ? 'bulk_cpu' : 'instance_cpu');
+                    const ramEl = document.getElementById(prefix === 'bulk' ? 'bulk_ram' : 'instance_ram');
+                    const diskEl = document.getElementById(prefix === 'bulk' ? 'bulk_disk' : 'instance_disk');
+
+                    if (p.cpu != null && cpuEl) cpuEl.value = p.cpu;
+                    if (p.memory != null && ramEl) ramEl.value = p.memory;
+                    if (p.disk != null && diskEl) diskEl.value = p.disk;
+                }
+            })
+            .catch(err => console.warn('Failed to fetch profile details:', err));
+    }
+}
+
 // Live search for instances table
 function initLiveSearch() {
     const searchInput = document.getElementById('search-instances');
@@ -73,6 +163,7 @@ function initLiveSearch() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initLiveSearch();
+    loadClassrooms();
     const form = document.getElementById('create-instance-form');
     if (form) {
         form.addEventListener('submit', async function(e) {
@@ -84,13 +175,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const progressText = document.getElementById('create-progress-text');
             const resultDiv = document.getElementById('create-result');
 
+            // Get classroom and derive type from it
+            const classroomEl = form.instance_classroom;
+            const classroomId = classroomEl.value;
+            const instanceType = form.instance_type.value;  // From hidden field updated by applyClassroom
+            let lxdProfile = null;
+
+            if (classroomId && _classroomCache && _classroomCache[classroomId]) {
+                const classroom = _classroomCache[classroomId];
+                lxdProfile = classroom.lxd_profile;
+            }
+
             // Get form values
             const formData = {
                 name: form.instance_name.value.trim(),
                 cpu: parseInt(form.instance_cpu.value),
                 ram: parseInt(form.instance_ram.value),
                 disk: parseInt(form.instance_disk.value),
-                type: form.instance_type.value
+                type: instanceType,
+                classroom_id: classroomId || null,
+                lxd_profile: lxdProfile
             };
 
             // Disable form during creation
@@ -358,16 +462,20 @@ async function checkBulkPreflight() {
     const cpu = parseInt(document.getElementById('bulk_cpu').value);
     const ram = parseInt(document.getElementById('bulk_ram').value);
     const disk = parseInt(document.getElementById('bulk_disk').value);
-    
+    const instanceType = document.getElementById('bulk_type').value;
+    const allowOvercommit = document.getElementById('bulk_allow_overcommit').checked;
+
     const resultDiv = document.getElementById('bulk-preflight-result');
     resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Checking prerequisites...</div>';
-    
+
     try {
         const params = new URLSearchParams({
             names: instanceNames.join(','),
             cpu: cpu.toString(),
             ram: ram.toString(),
-            disk: disk.toString()
+            disk: disk.toString(),
+            type: instanceType,
+            allow_overcommit: allowOvercommit.toString()
         });
         
         const response = await fetch(`/instances/bulk/preflight?${params}`);
@@ -383,12 +491,23 @@ async function checkBulkPreflight() {
         
         if (checks.passed) {
             html += '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All pre-flight checks passed!</div>';
-            html += `<div class="alert alert-info mt-2 mb-0">
-                <strong>Resources required:</strong><br>
-                CPU: ${checks.resources_requested?.cpu || 0} vCPUs | 
-                RAM: ${checks.resources_requested?.ram_gb || 0} GB | 
-                Disk: ${checks.resources_requested?.disk_gb || 0} GB
-            </div>`;
+            
+            // Show effective resources for containers (with density factor)
+            if (checks.effective_resources && instanceType === 'container') {
+                html += `<div class="alert alert-info mt-2 mb-0">
+                    <strong>Resources required (with ${checks.effective_resources.density_factor}x container density):</strong><br>
+                    CPU: ${checks.effective_resources.cpu} vCPUs (effective) |
+                    RAM: ${checks.effective_resources.ram_gb} GB (effective) |
+                    Disk: ${checks.resources_requested?.disk_gb || 0} GB
+                </div>`;
+            } else {
+                html += `<div class="alert alert-info mt-2 mb-0">
+                    <strong>Resources required:</strong><br>
+                    CPU: ${checks.resources_requested?.cpu || 0} vCPUs |
+                    RAM: ${checks.resources_requested?.ram_gb || 0} GB |
+                    Disk: ${checks.resources_requested?.disk_gb || 0} GB
+                </div>`;
+            }
             document.getElementById('bulkCreateStartBtn').disabled = false;
         } else {
             html = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Pre-flight checks failed:</div><ul class="mb-0">';
@@ -430,10 +549,21 @@ async function checkBulkPreflight() {
 
 async function startBulkCreate() {
     const namesText = document.getElementById('bulk_names').value.trim();
-    
+
     if (!namesText) {
         alert('Please enter at least one instance name');
         return;
+    }
+
+    // Get classroom and derive type from it
+    const classroomEl = document.getElementById('bulk_classroom');
+    const classroomId = classroomEl.value;
+    const instanceType = document.getElementById('bulk_type').value;  // From hidden field updated by applyClassroom
+    let lxdProfile = null;
+
+    if (classroomId && _classroomCache && _classroomCache[classroomId]) {
+        const classroom = _classroomCache[classroomId];
+        lxdProfile = classroom.lxd_profile;
     }
 
     // Expand patterns server-side by sending the raw pattern text
@@ -442,7 +572,9 @@ async function startBulkCreate() {
         cpu: parseInt(document.getElementById('bulk_cpu').value),
         ram: parseInt(document.getElementById('bulk_ram').value),
         disk: parseInt(document.getElementById('bulk_disk').value),
-        type: document.getElementById('bulk_type').value
+        type: instanceType,
+        classroom_id: classroomId || null,
+        lxd_profile: lxdProfile
     };
 
     // Close the bulk create modal and show progress modal

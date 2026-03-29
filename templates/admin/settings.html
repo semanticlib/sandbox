@@ -80,6 +80,7 @@
                                 <textarea class="form-control" id="client_key" name="client_key" rows="4"
                                           placeholder="-----BEGIN PRIVATE KEY-----...">{{ lxd_settings.client_key if lxd_settings else '' }}</textarea>
                             </div>
+                            <div class="mb-3" id="cert-alert"></div>
                             <div class="mb-3 form-check" id="verify-ssl-group">
                                 <input type="checkbox" class="form-check-input" id="verify_ssl" name="verify_ssl"
                                        {{ 'checked' if lxd_settings and lxd_settings.verify_ssl else '' }}>
@@ -175,5 +176,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/settings.js?v=9"></script>
+<script src="/static/js/settings.js?v=8"></script>
 {% endblock %}

@@ -82,8 +82,7 @@ async function generateCertificate() {
             alertDiv.innerHTML = `
                 <div class="alert alert-success">
                     <i class="bi bi-check-circle"></i> Certificate generated!
-                    <strong>Copy the certificate above</strong> and add it to LXD using:
-                    <code class="d-block mt-2 bg-light p-2 rounded">lxc config trust add</code>
+                    <strong>Copy the certificate above</strong> and add it to LXD.
                 </div>`;
         } else {
             alertDiv.innerHTML = `

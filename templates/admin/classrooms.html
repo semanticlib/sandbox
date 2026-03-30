@@ -89,10 +89,10 @@
                                         Cloud-init template
                                     </label>
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cc-cloud-init', 'container')">
+                                        <button type="button" class="btn btn-sm btn-outline-info" id="cc-load-container-default" onclick="loadDefaultCloudInit('cc-cloud-init', 'container')">
                                             <i class="bi bi-box"></i> Load default (Container)
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cc-cloud-init', 'vm')">
+                                        <button type="button" class="btn btn-sm btn-outline-info" id="cc-load-vm-default" onclick="loadDefaultCloudInit('cc-cloud-init', 'vm')">
                                             <i class="bi bi-pc-display"></i> Load default (VM)
                                         </button>
                                     </div>
@@ -171,10 +171,10 @@
                                         Cloud-init template
                                     </label>
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cn-cloud-init', 'container')">
+                                        <button type="button" class="btn btn-sm btn-outline-info" id="cn-load-container-default" onclick="loadDefaultCloudInit('cn-cloud-init', 'container')">
                                             <i class="bi bi-box"></i> Load default (Container)
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cn-cloud-init', 'vm')">
+                                        <button type="button" class="btn btn-sm btn-outline-info" id="cn-load-vm-default" onclick="loadDefaultCloudInit('cn-cloud-init', 'vm')">
                                             <i class="bi bi-pc-display"></i> Load default (VM)
                                         </button>
                                     </div>
@@ -219,18 +219,7 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="/static/js/classrooms.js?v=6"></script>
-<script>
-// Load classrooms on page load since it's the active tab
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof loadClassroomsTab === 'function') {
-        loadClassroomsTab();
-    }
-});
-</script>
 
 <!-- Delete Classroom Modal -->
 <div class="modal fade" id="deleteClassroomModal" tabindex="-1" aria-labelledby="deleteClassroomModalLabel" aria-hidden="true">
@@ -258,4 +247,16 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/classrooms.js?v=7"></script>
+<script>
+// Load classrooms on page load since it's the active tab
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof loadClassroomsTab === 'function') {
+        loadClassroomsTab();
+    }
+});
+</script>
 {% endblock %}

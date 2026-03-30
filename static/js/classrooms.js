@@ -67,6 +67,25 @@ async function loadClassroomImages(context = 'edit') {
     select.innerHTML = '<option value="">— Select an image —</option>';
     select.disabled = true;
 
+    // Reset cloud-init and image fields when type changes
+    document.getElementById(`${prefix}-cloud-init`).value = '';
+    document.getElementById(`${prefix}-image-description`).value = '';
+    document.getElementById(`${prefix}-image-fingerprint`).value = '';
+    document.getElementById(`${prefix}-image-alias`).value = '';
+
+    // Toggle Load Default buttons visibility
+    const containerBtn = document.getElementById(`${prefix}-load-container-default`);
+    const vmBtn = document.getElementById(`${prefix}-load-vm-default`);
+    if (containerBtn && vmBtn) {
+        if (imageType === 'container') {
+            containerBtn.style.display = 'inline-block';
+            vmBtn.style.display = 'none';
+        } else {
+            containerBtn.style.display = 'none';
+            vmBtn.style.display = 'inline-block';
+        }
+    }
+
     try {
         const res = await fetch(`/settings/vm/images?instance_type=${imageType}`);
         const data = await res.json();

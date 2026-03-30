@@ -103,7 +103,6 @@ async def create_instance(
 
         # Get classroom from request if provided, otherwise use first classroom
         classroom_id = data.get("classroom_id")
-        lxd_profile = data.get("lxd_profile")
         if classroom_id:
             classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
         else:
@@ -114,14 +113,11 @@ async def create_instance(
             instance_type = classroom.image_type or instance_type
             vm_username = classroom.username
             image_fingerprint = classroom.image_fingerprint
-            lxd_profile = lxd_profile or classroom.lxd_profile
+            cloud_init = classroom.cloud_init
         else:
             vm_username = "root" if instance_type == "container" else "ubuntu"
             image_fingerprint = None
-
-        # Note: lxd_profile is just the profile name (string), not a profile object
-        # Cloud-init is now handled by LXD when the profile is applied to the instance
-        cloud_init = None
+            cloud_init = None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,
@@ -141,8 +137,7 @@ async def create_instance(
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
             vm_username=vm_username,
-            image_fingerprint=image_fingerprint,
-            lxd_profile=lxd_profile
+            image_fingerprint=image_fingerprint
         )
 
         return JSONResponse({
@@ -337,23 +332,21 @@ async def bulk_create_instances(
 
         # Get classroom from request if provided, otherwise use first classroom
         classroom_id = data.get("classroom_id")
-        lxd_profile = data.get("lxd_profile")
         if classroom_id:
             classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
         else:
             classroom = db.query(Classroom).first()
-        
+
         # Use classroom settings if available
         if classroom:
             instance_type = classroom.image_type or instance_type
             vm_username = classroom.username
             image_fingerprint = classroom.image_fingerprint
-            lxd_profile = lxd_profile or classroom.lxd_profile
+            cloud_init = classroom.cloud_init
         else:
             vm_username = "ubuntu"
             image_fingerprint = None
-        
-        cloud_init = None  # Cloud-init is now handled via LXD profiles
+            cloud_init = None
 
         lxd_settings = {
             "use_socket": lxd_settings_db.use_socket,
@@ -373,8 +366,7 @@ async def bulk_create_instances(
             lxd_settings=lxd_settings,
             cloud_init=cloud_init,
             vm_username=vm_username,
-            image_fingerprint=image_fingerprint,
-            lxd_profile=lxd_profile
+            image_fingerprint=image_fingerprint
         )
 
         return JSONResponse({

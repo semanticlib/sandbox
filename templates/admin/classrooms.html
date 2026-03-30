@@ -13,12 +13,6 @@
             <i class="bi bi-mortarboard"></i> Classrooms
         </button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="profiles-tab" data-bs-toggle="tab" data-bs-target="#profiles" type="button" role="tab"
-                onclick="if(!_profilesLoaded) loadProfilesTab()">
-            <i class="bi bi-layers"></i> Instance Profiles
-        </button>
-    </li>
 </ul>
 
 <!-- Tabs Content -->
@@ -76,12 +70,6 @@
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
-                                    <select class="form-select" id="cc-lxd-profile">
-                                        <option value="">— None —</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
                                     <label class="form-label">OS Image</label>
                                     <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()">
                                         <option value="">— Select an image —</option>
@@ -96,13 +84,30 @@
                                 </div>
                             </div>
                             <div class="col mb-3">
+                                <div class="d-flex gap-2 mb-2 justify-content-between">
+                                    <label class="form-label">
+                                        Cloud-init template
+                                    </label>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cc-cloud-init', 'container')">
+                                            <i class="bi bi-box"></i> Load default (Container)
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cc-cloud-init', 'vm')">
+                                            <i class="bi bi-pc-display"></i> Load default (VM)
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="12"
+                                        placeholder="# cloud-config"></textarea>
+                                <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
+                                <hr class="my-3">
                                 <label class="form-label d-flex justify-content-between align-items-center">
                                     <span>SSH Config Template</span>
                                     <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cc-ssh-config')">
                                         <i class="bi bi-file-earmark-code"></i> Load default
                                     </button>
                                 </label>
-                                <textarea class="form-control font-monospace" id="cc-ssh-config" rows="18"
+                                <textarea class="form-control font-monospace" id="cc-ssh-config" rows="10"
                                         placeholder="Host {vm_name}
     HostName {host_ip}
     User {username}
@@ -110,7 +115,7 @@
     LocalForward 8080 {vm_hostname}:80"></textarea>
                                 <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
                                 <p><small class="text-muted">
-                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
+                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a>
                                     to access services running on the VM from your host machine.
                                 </small></p>
                             </div>
@@ -138,12 +143,6 @@
                                     <input type="text" class="form-control" id="cn-username" placeholder="ubuntu" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Instance Profile <small class="text-muted">(optional)</small></label>
-                                    <select class="form-select" id="cn-lxd-profile">
-                                        <option value="">— None —</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
                                     <label class="form-label">
                                         Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
                                     </label>
@@ -167,13 +166,30 @@
                                 </div>
                             </div>
                             <div class="col mb-3">
+                                <div class="d-flex gap-2 mb-2 justify-content-between">
+                                    <label class="form-label">
+                                        Cloud-init template
+                                    </label>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cn-cloud-init', 'container')">
+                                            <i class="bi bi-box"></i> Load default (Container)
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('cn-cloud-init', 'vm')">
+                                            <i class="bi bi-pc-display"></i> Load default (VM)
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="12"
+                                        placeholder="# cloud-config"></textarea>
+                                <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
+                                <hr class="my-3">
                                 <label class="form-label d-flex justify-content-between align-items-center">
                                     <span>SSH Config Template</span>
                                     <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cn-ssh-config')">
                                         <i class="bi bi-file-earmark-code"></i> Load default
                                     </button>
                                 </label>
-                                <textarea class="form-control font-monospace" id="cn-ssh-config" rows="18"
+                                <textarea class="form-control font-monospace" id="cn-ssh-config" rows="10"
                                         placeholder="Host {vm_name}
     HostName {host_ip}
     User {username}
@@ -181,7 +197,7 @@
     LocalForward 8080 {vm_hostname}:80"></textarea>
                                 <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
                                 <p><small class="text-muted">
-                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a> 
+                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a>
                                     to access services running on the VM from your host machine.
                                 </small></p>
                             </div>
@@ -202,158 +218,11 @@
             </div>
         </div>
     </div>
-
-    <!-- LXD Profiles Tab -->
-    <div class="tab-pane fade" id="profiles" role="tabpanel">
-        <div class="row">
-            <!-- Profile List -->
-            <div class="col" style="max-width: 320px; flex: 0 0 auto;">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-layers"></i> Profiles</span>
-                        <button class="btn btn-sm btn-outline-primary" onclick="showNewProfileForm()">
-                            <i class="bi bi-plus-lg"></i> New
-                        </button>
-                    </div>
-                    <div class="card-body p-0">
-                        <div id="profile-list-loading" class="text-center p-4 text-muted">
-                            <i class="bi bi-hourglass-split"></i> Loading profiles…
-                        </div>
-                        <ul class="list-group list-group-flush" id="profile-list" style="display:none;"></ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Edit / Create Panel -->
-            <div class="col">
-                <!-- Alert area -->
-                <div id="profile-alert" style="display:none;"></div>
-
-                <!-- Edit existing profile -->
-                <div class="card" id="profile-edit-card" style="display:none;">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-pencil-square"></i> Edit Profile: <strong id="profile-edit-name"></strong></span>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteProfile()" id="profile-delete-btn">
-                            <i class="bi bi-trash"></i> Delete
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Description</label>
-                                    <input type="text" class="form-control" id="pe-description" placeholder="optional">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">CPU cores</label>
-                                    <input type="number" class="form-control" id="pe-cpu" min="1" max="128" placeholder="—">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Memory (GiB)</label>
-                                    <input type="number" class="form-control" id="pe-memory" min="1" max="512" placeholder="—">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Disk (GiB)</label>
-                                    <input type="number" class="form-control" id="pe-disk" min="5" max="2000" placeholder="—">
-                                </div>
-
-                            </div>
-                            <div class="col">
-                                <div class="d-flex gap-2 mb-2 justify-content-between">
-                                    <label class="form-label">
-                                        Cloud-init template <small class="text-muted">(leave blank to remove)</small>
-                                    </label>
-                                    <div>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pe-cloud-init', 'container')">
-                                            <i class="bi bi-box"></i> Load default (Container)
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pe-cloud-init', 'vm')">
-                                            <i class="bi bi-pc-display"></i> Load default (VM)
-                                        </button>
-                                    </div>
-                                </div>
-                                <textarea class="form-control font-monospace" id="pe-cloud-init" rows="20"
-                                        placeholder="#cloud-config"></textarea>
-                                <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="saveProfile()">
-                            <i class="bi bi-save"></i> Save Profile
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Create new profile -->
-                <div class="card" id="profile-new-card" style="display:none;">
-                    <div class="card-header">
-                        <i class="bi bi-plus-circle"></i> Create New Profile
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="pn-name" placeholder="sandbox-vm">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Description</label>
-                                    <input type="text" class="form-control" id="pn-description" placeholder="optional">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">CPU cores</label>
-                                    <input type="number" class="form-control" id="pn-cpu" min="1" max="128" placeholder="—">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Memory (GiB)</label>
-                                    <input type="number" class="form-control" id="pn-memory" min="1" max="512" placeholder="—">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Disk (GiB)</label>
-                                    <input type="number" class="form-control" id="pn-disk" min="5" max="2000" placeholder="—">
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="d-flex gap-2 mb-2 justify-content-between">
-                                    <label class="form-label">
-                                        Cloud-init template <small class="text-muted">(optional)</small>
-                                    </label>
-                                    <div>
-                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pn-cloud-init', 'container')">
-                                        <i class="bi bi-box"></i> Load default (Container)
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultCloudInit('pn-cloud-init', 'vm')">
-                                        <i class="bi bi-pc-display"></i> Load default (VM)
-                                    </button>
-                                    </div>
-                                </div>
-                                <textarea class="form-control font-monospace" id="pn-cloud-init" rows="18"
-                                        placeholder="#cloud-config"></textarea>
-                                <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="createProfile()">
-                            <i class="bi bi-plus-circle"></i> Create Profile
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Placeholder when no profile selected -->
-                <div class="card" id="profile-placeholder">
-                    <div class="card-body text-center text-muted py-5">
-                        <i class="bi bi-layers" style="font-size: 3rem;"></i>
-                        <p class="mt-3">Select a profile to edit or create a new one</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/classrooms.js?v=5"></script>
+<script src="/static/js/classrooms.js?v=6"></script>
 <script>
 // Load classrooms on page load since it's the active tab
 document.addEventListener('DOMContentLoaded', function() {
@@ -383,33 +252,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="deleteClassroomConfirmBtn">
-                    <i class="bi bi-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Profile Modal -->
-<div class="modal fade" id="deleteProfileModal" tabindex="-1" aria-labelledby="deleteProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteProfileModalLabel">
-                    <i class="bi bi-exclamation-triangle"></i> Confirm Delete
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete profile <strong id="deleteProfileName"></strong>?</p>
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-circle"></i>
-                    <strong>Warning:</strong> This action cannot be undone.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="deleteProfileConfirmBtn">
                     <i class="bi bi-trash"></i> Delete
                 </button>
             </div>

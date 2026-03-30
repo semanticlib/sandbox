@@ -7,7 +7,7 @@ import os
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-from services.instance_tasks import InstanceTaskService, creation_tasks
+from services.instance_tasks import InstanceTaskService
 from services.lxd_service import LXDService
 
 
@@ -290,7 +290,7 @@ class BulkOperationService:
             for i, name in enumerate(instance_names):
                 bulk_operations[op_id]["status"] = f"Creating {name}..."
                 bulk_operations[op_id]["progress"] = int((i / total) * 100)
-                
+
                 # Create instance using existing task service
                 task_id = InstanceTaskService.start_creation_task(
                     name=name,
@@ -303,33 +303,26 @@ class BulkOperationService:
                     vm_username=vm_username,
                     image_fingerprint=image_fingerprint
                 )
-                
+
                 # Wait for this instance to complete before starting next
-                # This prevents overwhelming the system
-                while task_id in creation_tasks:
-                    task = creation_tasks[task_id]
-                    if task.get("done"):
-                        break
-                    time.sleep(1)
-                
+                task = InstanceTaskService.wait_for_task(task_id)
+
                 # Check result
-                if task_id in creation_tasks:
-                    task = creation_tasks[task_id]
-                    if task.get("error"):
-                        failed += 1
-                        failed_names.append(name)
-                        bulk_operations[op_id]["results"].append({
-                            "name": name,
-                            "success": False,
-                            "error": task.get("error")
-                        })
-                    else:
-                        completed += 1
-                        bulk_operations[op_id]["results"].append({
-                            "name": name,
-                            "success": True
-                        })
-                
+                if task.get("error"):
+                    failed += 1
+                    failed_names.append(name)
+                    bulk_operations[op_id]["results"].append({
+                        "name": name,
+                        "success": False,
+                        "error": task.get("error")
+                    })
+                else:
+                    completed += 1
+                    bulk_operations[op_id]["results"].append({
+                        "name": name,
+                        "success": True
+                    })
+
                 bulk_operations[op_id]["completed"] = completed
                 bulk_operations[op_id]["failed"] = failed
             

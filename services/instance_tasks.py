@@ -33,6 +33,44 @@ class InstanceTaskService:
             del creation_tasks[task_id]
 
     @staticmethod
+    def wait_for_task(task_id: str, timeout: Optional[float] = None) -> Dict[str, Any]:
+        """
+        Wait for a task to complete and return its result.
+        
+        Args:
+            task_id: The task ID to wait for
+            timeout: Maximum time to wait in seconds (None for infinite)
+            
+        Returns:
+            Dict with task status including 'done', 'error', 'progress', 'message'
+        """
+        start_time = time.time()
+        
+        while task_id in creation_tasks:
+            task = creation_tasks[task_id]
+            if task.get("done"):
+                return task
+            
+            # Check timeout
+            if timeout and (time.time() - start_time) > timeout:
+                return {
+                    "done": True,
+                    "error": "Task timed out",
+                    "progress": 100,
+                    "message": "Timeout"
+                }
+            
+            time.sleep(1)
+        
+        # Task not found (already cleaned up or never existed)
+        return {
+            "done": True,
+            "error": "Task not found",
+            "progress": 100,
+            "message": "Task not found"
+        }
+
+    @staticmethod
     def create_instance_background(
         task_id: str,
         name: str,

@@ -27,8 +27,7 @@ async function loadClassrooms() {
                 const opt = document.createElement('option');
                 opt.value = c.id;
                 const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
-                const cloudInitIndicator = c.cloud_init ? ' ☁' : '';
-                opt.textContent = `${typeIcon} ${c.name}${cloudInitIndicator}`;
+                opt.textContent = `${typeIcon} ${c.name}`;
                 sel.appendChild(opt);
             });
         });

@@ -39,12 +39,11 @@ async function loadClassroomsTab() {
             li.style.cursor = 'pointer';
 
             const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
-            const cloudInitIndicator = c.cloud_init ? ' ☁' : '';
 
             li.innerHTML = `
                 <div>
                     <strong>${c.name}</strong>
-                    <br><small class="text-muted">${typeIcon} ${c.image_type === 'virtual-machine' ? 'VM' : 'Container'}${cloudInitIndicator}</small>
+                    <br><small class="text-muted">${typeIcon} ${c.image_type === 'virtual-machine' ? 'VM' : 'Container'}</small>
                 </div>
                 <i class="bi bi-chevron-right text-muted"></i>`;
             li.addEventListener('click', () => selectClassroom(c.id));

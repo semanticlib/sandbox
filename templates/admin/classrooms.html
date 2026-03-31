@@ -64,7 +64,7 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Instance Type</label>
-                                    <select class="form-select" id="cc-image-type" onchange="loadClassroomImages()">
+                                    <select class="form-select" id="cc-image-type" onchange="onInstanceTypeChange()">
                                         <option value="container">Container</option>
                                         <option value="virtual-machine">Virtual Machine</option>
                                     </select>
@@ -133,7 +133,7 @@
                                     <label class="form-label">
                                         Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
                                     </label>
-                                    <select class="form-select" id="cn-image-type" onchange="loadClassroomImages('new')">
+                                    <select class="form-select" id="cn-image-type" onchange="onInstanceTypeChange('new')">
                                         <option value="container">Container</option>
                                         <option value="virtual-machine">Virtual Machine</option>
                                     </select>

@@ -66,12 +66,6 @@ async function loadClassroomImages(context = 'edit') {
     select.innerHTML = '<option value="">— Select an image —</option>';
     select.disabled = true;
 
-    // Reset cloud-init and image fields when type changes
-    document.getElementById(`${prefix}-cloud-init`).value = '';
-    document.getElementById(`${prefix}-image-description`).value = '';
-    document.getElementById(`${prefix}-image-fingerprint`).value = '';
-    document.getElementById(`${prefix}-image-alias`).value = '';
-
     // Toggle Load Default buttons visibility
     const containerBtn = document.getElementById(`${prefix}-load-container-default`);
     const vmBtn = document.getElementById(`${prefix}-load-vm-default`);
@@ -103,6 +97,23 @@ async function loadClassroomImages(context = 'edit') {
     } catch (err) {
         console.error('Failed to load images:', err);
     }
+}
+
+/**
+ * Called when instance type dropdown changes.
+ * Resets cloud-init and image fields before loading new images.
+ */
+function onInstanceTypeChange(context = 'edit') {
+    const prefix = context === 'new' ? 'cn' : 'cc';
+    
+    // Reset cloud-init and image fields when type changes
+    document.getElementById(`${prefix}-cloud-init`).value = '';
+    document.getElementById(`${prefix}-image-description`).value = '';
+    document.getElementById(`${prefix}-image-fingerprint`).value = '';
+    document.getElementById(`${prefix}-image-alias`).value = '';
+    
+    // Load images for the new type
+    loadClassroomImages(context);
 }
 
 function onClassroomImageSelect(context = 'edit') {

@@ -146,11 +146,21 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
         if existing:
             return JSONResponse({"success": False, "message": "Classroom name already exists"})
 
+        # Validate cloud-init template
+        cloud_init = data.get("cloud_init")
+        if not cloud_init:
+            return JSONResponse({"success": False, "message": "Cloud-init template is required"})
+        
+        from services.cloud_init_service import validate_cloud_init_template
+        is_valid, error = validate_cloud_init_template(cloud_init)
+        if not is_valid:
+            return JSONResponse({"success": False, "message": f"Invalid cloud-init template: {error}"})
+
         classroom = Classroom(
             name=name,
             username=username,
             image_type=data.get("image_type", "container"),
-            cloud_init=data.get("cloud_init"),
+            cloud_init=cloud_init,
             local_forwards=data.get("local_forwards"),
             image_fingerprint=data.get("image_fingerprint"),
             image_description=data.get("image_description"),
@@ -202,7 +212,20 @@ async def update_classroom(classroom_id: int, request: Request, db: Session = De
         classroom.username = new_username
 
         classroom.image_type = data.get("image_type", classroom.image_type)
-        classroom.cloud_init = data.get("cloud_init")
+        
+        # Validate cloud-init template if provided
+        cloud_init = data.get("cloud_init")
+        if cloud_init is not None:
+            if not cloud_init:
+                return JSONResponse({"success": False, "message": "Cloud-init template is required"})
+            
+            from services.cloud_init_service import validate_cloud_init_template
+            is_valid, error = validate_cloud_init_template(cloud_init)
+            if not is_valid:
+                return JSONResponse({"success": False, "message": f"Invalid cloud-init template: {error}"})
+            
+            classroom.cloud_init = cloud_init
+        
         classroom.local_forwards = data.get("local_forwards")
         classroom.image_fingerprint = data.get("image_fingerprint")
         classroom.image_description = data.get("image_description")

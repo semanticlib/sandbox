@@ -63,15 +63,15 @@
                                     <input type="text" class="form-control" id="cc-username" placeholder="ubuntu" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Instance Type</label>
-                                    <select class="form-select" id="cc-image-type" onchange="onInstanceTypeChange()">
+                                    <label class="form-label">Instance Type <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="cc-image-type" onchange="onInstanceTypeChange()" required>
                                         <option value="container">Container</option>
                                         <option value="virtual-machine">Virtual Machine</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">OS Image</label>
-                                    <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()">
+                                    <label class="form-label">OS Image <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="cc-image-select" onchange="onClassroomImageSelect()" required>
                                         <option value="">— Select an image —</option>
                                     </select>
                                     <small class="text-muted">Choose from available images</small>
@@ -94,7 +94,7 @@
                             <div class="col mb-3">
                                 <div class="d-flex gap-2 mb-2 justify-content-between">
                                     <label class="form-label">
-                                        Cloud-init template
+                                        Cloud-init template <span class="text-danger">*</span>
                                         <a href="https://docs.cloud-init.io/en/latest/index.html" target="_blank"><i class="bi bi-question-circle"></i></a>
                                     </label>
                                     <div>
@@ -106,7 +106,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="22"
+                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="22" required
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
                             </div>
@@ -135,16 +135,17 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">
-                                        Instance Type <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
+                                        Instance Type <span class="text-danger">*</span>
+                                        <a href="https://ubuntu.com/blog/lxd-vs-docker" target="_blank"><i class="bi bi-question-circle"></i></a>
                                     </label>
-                                    <select class="form-select" id="cn-image-type" onchange="onInstanceTypeChange('new')">
+                                    <select class="form-select" id="cn-image-type" onchange="onInstanceTypeChange('new')" required>
                                         <option value="container">Container</option>
                                         <option value="virtual-machine">Virtual Machine</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">OS Image</label>
-                                    <select class="form-select" id="cn-image-select" onchange="onClassroomImageSelect('new')">
+                                    <label class="form-label">OS Image <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="cn-image-select" onchange="onClassroomImageSelect('new')" required>
                                         <option value="">— Select an image —</option>
                                     </select>
                                     <small class="text-muted">Choose from available images</small>
@@ -167,7 +168,7 @@
                             <div class="col mb-3">
                                 <div class="d-flex gap-2 mb-2 justify-content-between">
                                     <label class="form-label">
-                                        Cloud-init template
+                                        Cloud-init template <span class="text-danger">*</span>
                                         <a href="https://docs.cloud-init.io/en/latest/index.html" target="_blank"><i class="bi bi-question-circle"></i></a>
                                     </label>
                                     <div>
@@ -179,7 +180,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="22"
+                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="22" required
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
                             </div>

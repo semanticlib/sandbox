@@ -169,6 +169,30 @@ async function selectClassroom(id) {
     }
 }
 
+function validateClassroomPayload(payload) {
+    if (!payload.name) {
+        showClassroomAlert('danger', 'Classroom name is required.');
+        return false;
+    }
+    if (!payload.username) {
+        showClassroomAlert('danger', 'Default username is required.');
+        return false;
+    }
+    if (!payload.image_type) {
+        showClassroomAlert('danger', 'Instance type is required.');
+        return false;
+    }
+    if (!payload.image_fingerprint) {
+        showClassroomAlert('danger', 'Please select an OS image.');
+        return false;
+    }
+    if (!payload.cloud_init) {
+        showClassroomAlert('danger', 'Cloud-init template is required. Click "Load default" to use a template.');
+        return false;
+    }
+    return true;
+}
+
 async function saveClassroom() {
     if (!_currentClassroomId) return;
 
@@ -182,15 +206,7 @@ async function saveClassroom() {
         image_description: document.getElementById('cc-image-description').value || null,
     };
 
-    if (!payload.name) {
-        showClassroomAlert('danger', 'Classroom name is required.');
-        return;
-    }
-
-    if (!payload.username) {
-        showClassroomAlert('danger', 'Default username is required.');
-        return;
-    }
+    if (!validateClassroomPayload(payload)) return;
 
     try {
         const res = await fetch(`/api/classrooms/${_currentClassroomId}`, {
@@ -212,21 +228,17 @@ async function saveClassroom() {
 }
 
 async function createClassroom() {
-    const name = document.getElementById('cn-name').value.trim();
-    const username = document.getElementById('cn-username').value.trim();
-
-    if (!name) { showClassroomAlert('danger', 'Classroom name is required.'); return; }
-    if (!username) { showClassroomAlert('danger', 'Default username is required.'); return; }
-
     const payload = {
-        name,
-        username,
+        name: document.getElementById('cn-name').value.trim(),
+        username: document.getElementById('cn-username').value.trim(),
         image_type: document.getElementById('cn-image-type').value,
         cloud_init: document.getElementById('cn-cloud-init').value || null,
         local_forwards: document.getElementById('cn-local-forwards').value || null,
         image_fingerprint: document.getElementById('cn-image-fingerprint').value || null,
         image_description: document.getElementById('cn-image-description').value || null,
     };
+
+    if (!validateClassroomPayload(payload)) return;
 
     try {
         const res = await fetch('/api/classrooms', {

@@ -82,6 +82,15 @@
                                     <input type="hidden" id="cc-image-fingerprint">
                                     <input type="hidden" id="cc-image-alias">
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        SSH Local Port Forwards
+                                        <a href="https://www.digitalocean.com/community/tutorials/ssh-port-forwarding" target="_blank"><i class="bi bi-question-circle"></i></a>
+                                    </label>
+                                    <textarea class="form-control font-monospace" id="cc-local-forwards" rows="3"
+                                            placeholder="8080:localhost:80&#10;9000:localhost:3000"></textarea>
+                                    <small class="text-muted">One per line in format: <code>sourcePort:localhost:targetPort</code></small>
+                                </div>
                             </div>
                             <div class="col mb-3">
                                 <div class="d-flex gap-2 mb-2 justify-content-between">
@@ -97,14 +106,9 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="12"
+                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="22"
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
-                                <hr class="my-3">
-                                <label class="form-label">SSH Local Port Forwards</label>
-                                <textarea class="form-control font-monospace" id="cc-local-forwards" rows="5"
-                                          placeholder="8080:localhost:80&#10;9000:localhost:3000"></textarea>
-                                <small class="text-muted">One per line in format: <code>sourcePort:localhost:targetPort</code></small>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="saveClassroom()">
@@ -151,6 +155,15 @@
                                     <input type="hidden" id="cn-image-fingerprint">
                                     <input type="hidden" id="cn-image-alias">
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        SSH Local Port Forwards
+                                        <a href="https://www.digitalocean.com/community/tutorials/ssh-port-forwarding" target="_blank"><i class="bi bi-question-circle"></i></a>
+                                    </label>
+                                    <textarea class="form-control font-monospace" id="cn-local-forwards" rows="3"
+                                            placeholder="8080:localhost:80&#10;9000:localhost:3000"></textarea>
+                                    <small class="text-muted">One per line in format: <code>sourcePort:localhost:targetPort</code></small>
+                                </div>
                             </div>
                             <div class="col mb-3">
                                 <div class="d-flex gap-2 mb-2 justify-content-between">
@@ -166,14 +179,9 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="12"
+                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="22"
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
-                                <hr class="my-3">
-                                <label class="form-label">SSH Local Port Forwards</label>
-                                <textarea class="form-control font-monospace" id="cn-local-forwards" rows="5"
-                                          placeholder="8080:localhost:80&#10;9000:localhost:3000"></textarea>
-                                <small class="text-muted">One per line in format: <code>sourcePort:localhost:targetPort</code></small>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="createClassroom()">

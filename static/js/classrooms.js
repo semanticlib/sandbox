@@ -121,17 +121,14 @@ function onClassroomImageSelect(context = 'edit') {
     const select = document.getElementById(`${prefix}-image-select`);
     const descInput = document.getElementById(`${prefix}-image-description`);
     const fingerprintInput = document.getElementById(`${prefix}-image-fingerprint`);
-    const aliasInput = document.getElementById(`${prefix}-image-alias`);
 
     const selected = select.options[select.selectedIndex];
     if (selected.value) {
         descInput.value = selected.textContent;
         fingerprintInput.value = selected.dataset.fullFingerprint;
-        aliasInput.value = selected.dataset.alias;
     } else {
         descInput.value = '';
         fingerprintInput.value = '';
-        aliasInput.value = '';
     }
 }
 
@@ -163,7 +160,6 @@ async function selectClassroom(id) {
         document.getElementById('cc-cloud-init').value = c.cloud_init || '';
         document.getElementById('cc-local-forwards').value = c.local_forwards || '';
         document.getElementById('cc-image-fingerprint').value = c.image_fingerprint || '';
-        document.getElementById('cc-image-alias').value = c.image_alias || '';
         document.getElementById('cc-image-description').value = c.image_description || '';
 
         // Load images for the selected type
@@ -183,7 +179,6 @@ async function saveClassroom() {
         cloud_init: document.getElementById('cc-cloud-init').value || null,
         local_forwards: document.getElementById('cc-local-forwards').value || null,
         image_fingerprint: document.getElementById('cc-image-fingerprint').value || null,
-        image_alias: document.getElementById('cc-image-alias').value || null,
         image_description: document.getElementById('cc-image-description').value || null,
     };
 
@@ -230,7 +225,6 @@ async function createClassroom() {
         cloud_init: document.getElementById('cn-cloud-init').value || null,
         local_forwards: document.getElementById('cn-local-forwards').value || null,
         image_fingerprint: document.getElementById('cn-image-fingerprint').value || null,
-        image_alias: document.getElementById('cn-image-alias').value || null,
         image_description: document.getElementById('cn-image-description').value || null,
     };
 
@@ -309,7 +303,7 @@ async function showNewClassroomForm() {
     document.getElementById('classroom-alert').style.display = 'none';
 
     // Clear fields
-    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-cloud-init', 'cn-local-forwards']
+    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-cloud-init', 'cn-local-forwards']
         .forEach(id => { document.getElementById(id).value = ''; });
 
     // Deselect list item

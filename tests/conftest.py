@@ -226,7 +226,6 @@ def mock_classroom(db_session):
         username="ubuntu",
         image_type="virtual-machine",
         image_fingerprint="abc123def456",
-        image_alias="ubuntu/24.04",
         image_description="Ubuntu 24.04 LTS",
     )
     db_session.add(classroom)

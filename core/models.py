@@ -35,5 +35,4 @@ class Classroom(Base):
     cloud_init = Column(Text, nullable=True)  # Cloud-init template for instance initialization
     local_forwards = Column(Text, nullable=True)  # SSH local port forwards (one per line: sourcePort:localhost:targetPort)
     image_fingerprint = Column(String, nullable=True)  # LXD image fingerprint
-    image_alias = Column(String, nullable=True)  # Image alias (e.g., "ubuntu/24.04")
     image_description = Column(String, nullable=True)  # Human-readable description

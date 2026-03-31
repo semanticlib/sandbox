@@ -693,7 +693,7 @@ async def download_ssh_config(
     import io
     from fastapi.responses import StreamingResponse
     from services.ssh_key_service import get_instance_keys
-    from services.ssh_config_service import create_ssh_config_files, DEFAULT_SSH_CONFIG_TEMPLATE
+    from services.ssh_config_service import create_ssh_config_files
     from services.jump_user_service import create_jump_user
     from core.models import Classroom
 
@@ -722,8 +722,9 @@ async def download_ssh_config(
     classroom = db.query(Classroom).first()
     username = classroom.username if classroom else "ubuntu"
 
-    # Get SSH config template from classroom
-    ssh_template = classroom.ssh_config_template if classroom and classroom.ssh_config_template else DEFAULT_SSH_CONFIG_TEMPLATE
+    # Use hard-coded default SSH config template
+    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
+    ssh_template = DEFAULT_SSH_CONFIG_TEMPLATE
 
     # Get VM IP address
     from services.lxd_service import LXDService

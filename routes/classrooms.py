@@ -55,7 +55,7 @@ async def classrooms_page(
     })
 
 # ============================================================
-# Cloud-init template and SSH config template routes (API)
+# Cloud-init template routes (API)
 # ============================================================
 
 @router.get("/classrooms/cloud-init/template")
@@ -69,16 +69,6 @@ async def get_default_cloud_init_template(template_type: str = "container"):
         template = DEFAULT_CLOUD_INIT_TEMPLATE_VM
 
     return JSONResponse({"success": True, "template": template})
-
-
-@router.get("/classrooms/connection-templates")
-async def get_connection_templates():
-    """Get default SSH config template"""
-    from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
-    return JSONResponse({
-        "success": True,
-        "ssh_config_template": DEFAULT_SSH_CONFIG_TEMPLATE
-    })
 
 
 # ============================================================
@@ -102,7 +92,6 @@ async def get_classrooms(db: Session = Depends(get_db)):
                     "image_fingerprint": c.image_fingerprint,
                     "image_alias": c.image_alias,
                     "image_description": c.image_description,
-                    "ssh_config_template": c.ssh_config_template or "",
                 }
                 for c in classrooms
             ]
@@ -131,7 +120,6 @@ async def get_classroom(classroom_id: int, db: Session = Depends(get_db)):
                 "image_fingerprint": classroom.image_fingerprint,
                 "image_alias": classroom.image_alias,
                 "image_description": classroom.image_description,
-                "ssh_config_template": classroom.ssh_config_template or "",
             }
         })
     except Exception as exc:
@@ -166,7 +154,6 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
             image_fingerprint=data.get("image_fingerprint"),
             image_alias=data.get("image_alias"),
             image_description=data.get("image_description"),
-            ssh_config_template=data.get("ssh_config_template"),
         )
         db.add(classroom)
         db.commit()
@@ -183,7 +170,6 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
                 "image_fingerprint": classroom.image_fingerprint,
                 "image_alias": classroom.image_alias,
                 "image_description": classroom.image_description,
-                "ssh_config_template": classroom.ssh_config_template or "",
             }
         })
     except Exception as exc:
@@ -220,7 +206,6 @@ async def update_classroom(classroom_id: int, request: Request, db: Session = De
         classroom.image_fingerprint = data.get("image_fingerprint")
         classroom.image_alias = data.get("image_alias")
         classroom.image_description = data.get("image_description")
-        classroom.ssh_config_template = data.get("ssh_config_template")
 
         db.commit()
         db.refresh(classroom)
@@ -236,7 +221,6 @@ async def update_classroom(classroom_id: int, request: Request, db: Session = De
                 "image_fingerprint": classroom.image_fingerprint,
                 "image_alias": classroom.image_alias,
                 "image_description": classroom.image_description,
-                "ssh_config_template": classroom.ssh_config_template or "",
             }
         })
     except Exception as exc:

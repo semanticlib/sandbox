@@ -97,27 +97,9 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="12"
+                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="18"
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
-                                <hr class="my-3">
-                                <label class="form-label d-flex justify-content-between align-items-center">
-                                    <span>SSH Config Template</span>
-                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cc-ssh-config')">
-                                        <i class="bi bi-file-earmark-code"></i> Load default
-                                    </button>
-                                </label>
-                                <textarea class="form-control font-monospace" id="cc-ssh-config" rows="10"
-                                        placeholder="Host {vm_name}
-    HostName {host_ip}
-    User {username}
-    IdentityFile ~/.ssh/{private_key_filename}
-    LocalForward 8080 {vm_hostname}:80"></textarea>
-                                <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
-                                <p><small class="text-muted">
-                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a>
-                                    to access services running on the VM from your host machine.
-                                </small></p>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="saveClassroom()">
@@ -179,27 +161,9 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="12"
+                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="18"
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
-                                <hr class="my-3">
-                                <label class="form-label d-flex justify-content-between align-items-center">
-                                    <span>SSH Config Template</span>
-                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="loadDefaultSSHConfig('cn-ssh-config')">
-                                        <i class="bi bi-file-earmark-code"></i> Load default
-                                    </button>
-                                </label>
-                                <textarea class="form-control font-monospace" id="cn-ssh-config" rows="10"
-                                        placeholder="Host {vm_name}
-    HostName {host_ip}
-    User {username}
-    IdentityFile ~/.ssh/{private_key_filename}
-    LocalForward 8080 {vm_hostname}:80"></textarea>
-                                <small class="text-muted">Available placeholders: <code>{vm_name}</code>, <code>{host_ip}</code>, <code>{username}</code>, <code>{private_key_filename}</code>, <code>{vm_hostname}</code></small>
-                                <p><small class="text-muted">
-                                    Use <a href="https://unix.stackexchange.com/questions/375411/ssh-localforward-jumping-hosts" target="_blank">LocalForward</a>
-                                    to access services running on the VM from your host machine.
-                                </small></p>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="createClassroom()">

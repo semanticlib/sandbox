@@ -153,7 +153,6 @@ async function selectClassroom(id) {
         document.getElementById('cc-image-fingerprint').value = c.image_fingerprint || '';
         document.getElementById('cc-image-alias').value = c.image_alias || '';
         document.getElementById('cc-image-description').value = c.image_description || '';
-        document.getElementById('cc-ssh-config').value = c.ssh_config_template || '';
 
         // Load images for the selected type
         await loadClassroomImages('edit');
@@ -173,7 +172,6 @@ async function saveClassroom() {
         image_fingerprint: document.getElementById('cc-image-fingerprint').value || null,
         image_alias: document.getElementById('cc-image-alias').value || null,
         image_description: document.getElementById('cc-image-description').value || null,
-        ssh_config_template: document.getElementById('cc-ssh-config').value,
     };
 
     if (!payload.name) {
@@ -220,7 +218,6 @@ async function createClassroom() {
         image_fingerprint: document.getElementById('cn-image-fingerprint').value || null,
         image_alias: document.getElementById('cn-image-alias').value || null,
         image_description: document.getElementById('cn-image-description').value || null,
-        ssh_config_template: document.getElementById('cn-ssh-config').value,
     };
 
     try {
@@ -298,7 +295,7 @@ async function showNewClassroomForm() {
     document.getElementById('classroom-alert').style.display = 'none';
 
     // Clear fields
-    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-cloud-init', 'cn-ssh-config']
+    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-cloud-init']
         .forEach(id => { document.getElementById(id).value = ''; });
 
     // Deselect list item
@@ -323,18 +320,6 @@ function showClassroomAlert(type, message) {
         <i class="bi bi-${type === 'success' ? 'check-circle' : 'x-circle'}"></i> ${message}
         <button type="button" class="btn-close" onclick="this.parentElement.parentElement.style.display='none'"></button>
     </div>`;
-}
-
-async function loadDefaultSSHConfig(targetId) {
-    try {
-        const res = await fetch('/classrooms/connection-templates');
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById(targetId).value = data.ssh_config_template;
-        }
-    } catch (err) {
-        console.error('Failed to load default SSH config:', err);
-    }
 }
 
 async function loadDefaultCloudInit(targetId, templateType = 'container') {

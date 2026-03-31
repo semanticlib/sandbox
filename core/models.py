@@ -36,4 +36,3 @@ class Classroom(Base):
     image_fingerprint = Column(String, nullable=True)  # LXD image fingerprint
     image_alias = Column(String, nullable=True)  # Image alias (e.g., "ubuntu/24.04")
     image_description = Column(String, nullable=True)  # Human-readable description
-    ssh_config_template = Column(Text, nullable=True)  # SSH config template with placeholders

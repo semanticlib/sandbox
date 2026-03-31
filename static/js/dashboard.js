@@ -3,7 +3,7 @@ let createPollingInterval = null;
 
 // ============== Classroom Picker ==============
 
-let _classroomCache = null;  // { id -> { name, image_type, lxd_profile, ... } }
+let _classroomCache = null;  // { id -> { name, image_type, cloud_init, ... } }
 
 async function loadClassrooms() {
     try {
@@ -27,8 +27,7 @@ async function loadClassrooms() {
                 const opt = document.createElement('option');
                 opt.value = c.id;
                 const typeIcon = c.image_type === 'virtual-machine' ? '🖥️' : '📦';
-                const profileInfo = c.lxd_profile ? ` • ${c.lxd_profile}` : '';
-                opt.textContent = `${typeIcon} ${c.name}${profileInfo}`;
+                opt.textContent = `${typeIcon} ${c.name}`;
                 sel.appendChild(opt);
             });
         });
@@ -38,7 +37,8 @@ async function loadClassrooms() {
 }
 
 /**
- * Apply selected classroom settings to form fields.
+ * Apply classroom settings to form fields.
+ * Uses hard-coded default values for CPU, RAM, and Disk.
  * @param {'instance'|'bulk'} context
  */
 function applyClassroom(context) {
@@ -70,25 +70,6 @@ function applyClassroom(context) {
     const typeInput = document.getElementById(prefix + '_type');
     if (typeDisplay) typeDisplay.textContent = typeIcon + ' ' + typeLabel;
     if (typeInput) typeInput.value = c.image_type || 'container';
-
-    // If classroom has an LXD profile, fetch its details and populate CPU/RAM/Disk
-    if (c.lxd_profile) {
-        fetch(`/api/lxd/profiles/${encodeURIComponent(c.lxd_profile)}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.profile) {
-                    const p = data.profile;
-                    const cpuEl = document.getElementById(prefix === 'bulk' ? 'bulk_cpu' : 'instance_cpu');
-                    const ramEl = document.getElementById(prefix === 'bulk' ? 'bulk_ram' : 'instance_ram');
-                    const diskEl = document.getElementById(prefix === 'bulk' ? 'bulk_disk' : 'instance_disk');
-
-                    if (p.cpu != null && cpuEl) cpuEl.value = p.cpu;
-                    if (p.memory != null && ramEl) ramEl.value = p.memory;
-                    if (p.disk != null && diskEl) diskEl.value = p.disk;
-                }
-            })
-            .catch(err => console.warn('Failed to fetch profile details:', err));
-    }
 }
 
 // Live search for instances table
@@ -179,12 +160,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const classroomEl = form.instance_classroom;
             const classroomId = classroomEl.value;
             const instanceType = form.instance_type.value;  // From hidden field updated by applyClassroom
-            let lxdProfile = null;
-
-            if (classroomId && _classroomCache && _classroomCache[classroomId]) {
-                const classroom = _classroomCache[classroomId];
-                lxdProfile = classroom.lxd_profile;
-            }
 
             // Get form values
             const formData = {
@@ -193,8 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ram: parseInt(form.instance_ram.value),
                 disk: parseInt(form.instance_disk.value),
                 type: instanceType,
-                classroom_id: classroomId || null,
-                lxd_profile: lxdProfile
+                classroom_id: classroomId || null
             };
 
             // Disable form during creation
@@ -559,12 +533,6 @@ async function startBulkCreate() {
     const classroomEl = document.getElementById('bulk_classroom');
     const classroomId = classroomEl.value;
     const instanceType = document.getElementById('bulk_type').value;  // From hidden field updated by applyClassroom
-    let lxdProfile = null;
-
-    if (classroomId && _classroomCache && _classroomCache[classroomId]) {
-        const classroom = _classroomCache[classroomId];
-        lxdProfile = classroom.lxd_profile;
-    }
 
     // Expand patterns server-side by sending the raw pattern text
     const formData = {
@@ -573,8 +541,7 @@ async function startBulkCreate() {
         ram: parseInt(document.getElementById('bulk_ram').value),
         disk: parseInt(document.getElementById('bulk_disk').value),
         type: instanceType,
-        classroom_id: classroomId || null,
-        lxd_profile: lxdProfile
+        classroom_id: classroomId || null
     };
 
     // Close the bulk create modal and show progress modal

@@ -25,6 +25,80 @@ Host {vm_name}
 """
 
 
+def parse_local_forwards(local_forwards_text: str) -> list:
+    """
+    Parse local forwards from multi-line text.
+    
+    Args:
+        local_forwards_text: Multi-line string with format sourcePort:localhost:targetPort per line
+        
+    Returns:
+        List of tuples (source_port, target_host, target_port)
+    """
+    if not local_forwards_text:
+        return []
+    
+    forwards = []
+    for line in local_forwards_text.strip().split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        
+        parts = line.split(':')
+        if len(parts) >= 3:
+            source_port = parts[0].strip()
+            target_host = parts[1].strip()
+            target_port = parts[2].strip()
+            forwards.append((source_port, target_host, target_port))
+    
+    return forwards
+
+
+def append_local_forwards_to_config(ssh_config_content: str, local_forwards_text: str) -> str:
+    """
+    Append LocalForward directives to SSH config content.
+    
+    Args:
+        ssh_config_content: The SSH config content string
+        local_forwards_text: Multi-line string with format sourcePort:localhost:targetPort per line
+        
+    Returns:
+        SSH config content with LocalForward directives appended
+    """
+    forwards = parse_local_forwards(local_forwards_text)
+    if not forwards:
+        return ssh_config_content
+    
+    # Find the end of the config block comment
+    end_marker = "# --- End of config block ---"
+    if end_marker not in ssh_config_content:
+        # If no marker, just append at the end
+        lines = ssh_config_content.rstrip().split('\n')
+    else:
+        # Insert before the end marker
+        lines = ssh_config_content.split('\n')
+    
+    # Build LocalForward lines (SSH syntax: LocalForward port host:port)
+    forward_lines = []
+    for source_port, target_host, target_port in forwards:
+        forward_lines.append(f"    LocalForward {source_port} {target_host}:{target_port}")
+    
+    if end_marker in ssh_config_content:
+        # Find the index of the end marker and insert before it
+        end_marker_idx = lines.index(end_marker)
+        # Insert blank line and forwards before the marker
+        for i, forward_line in enumerate(forward_lines):
+            lines.insert(end_marker_idx + i, forward_line)
+        # Add a blank line before forwards if there are forwards
+        if forward_lines:
+            lines.insert(end_marker_idx, "")
+    else:
+        # Append at the end
+        lines.extend(forward_lines)
+    
+    return '\n'.join(lines)
+
+
 def auto_detect_host_ip():
     """Auto-detect the host machine's IP address on the local network."""
     try:
@@ -41,7 +115,8 @@ def auto_detect_host_ip():
 
 
 def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: str = None,
-                            ssh_template: str = None, base_path: str = "_instances"):
+                            ssh_template: str = None, local_forwards: str = None,
+                            base_path: str = "_instances"):
     """
     Create SSH config files for a VM instance.
 
@@ -51,24 +126,25 @@ def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: 
         username: Username for SSH access
         vm_ip: VM's IP address (optional, will try to use .local if not available)
         ssh_template: Custom SSH config template (optional)
+        local_forwards: Multi-line string with SSH local port forwards (optional)
         base_path: Base directory for storing config files
     """
     # Import safe path function to prevent path traversal
     from services.ssh_key_service import _safe_instance_path
-    
+
     # Safely resolve path
     instance_dir = _safe_instance_path(vm_name, base_path)
     instance_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Get host IP from settings or auto-detect
     host_ip = settings.HOST_SERVER_IP
     if not host_ip:
         # Auto-detect if not configured
         host_ip = auto_detect_host_ip()
-    
+
     # Private key filename
     private_key_filename = f"id_ed25519"
-    
+
     # Use VM IP if available, otherwise use .local domain
     vm_hostname = vm_ip if vm_ip else f"{vm_name}.local"
 
@@ -83,6 +159,10 @@ def create_ssh_config_files(vm_name: str, ssh_keys: dict, username: str, vm_ip: 
         private_key_filename=private_key_filename,
         vm_hostname=vm_hostname
     )
+
+    # Append local forwards if provided
+    if local_forwards:
+        ssh_config_content = append_local_forwards_to_config(ssh_config_content, local_forwards)
 
     ssh_config_path = os.path.join(instance_dir, "ssh-config")
     with open(ssh_config_path, 'w') as f:

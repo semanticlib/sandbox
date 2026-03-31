@@ -33,6 +33,44 @@ class InstanceTaskService:
             del creation_tasks[task_id]
 
     @staticmethod
+    def wait_for_task(task_id: str, timeout: Optional[float] = None) -> Dict[str, Any]:
+        """
+        Wait for a task to complete and return its result.
+        
+        Args:
+            task_id: The task ID to wait for
+            timeout: Maximum time to wait in seconds (None for infinite)
+            
+        Returns:
+            Dict with task status including 'done', 'error', 'progress', 'message'
+        """
+        start_time = time.time()
+        
+        while task_id in creation_tasks:
+            task = creation_tasks[task_id]
+            if task.get("done"):
+                return task
+            
+            # Check timeout
+            if timeout and (time.time() - start_time) > timeout:
+                return {
+                    "done": True,
+                    "error": "Task timed out",
+                    "progress": 100,
+                    "message": "Timeout"
+                }
+            
+            time.sleep(1)
+        
+        # Task not found (already cleaned up or never existed)
+        return {
+            "done": True,
+            "error": "Task not found",
+            "progress": 100,
+            "message": "Task not found"
+        }
+
+    @staticmethod
     def create_instance_background(
         task_id: str,
         name: str,
@@ -43,8 +81,7 @@ class InstanceTaskService:
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None,
-        lxd_profile: Optional[str] = None
+        image_fingerprint: Optional[str] = None
     ):
         """Background task to create an instance and track progress"""
         from services.lxd_client import get_lxd_client
@@ -150,24 +187,14 @@ class InstanceTaskService:
                 }
 
                 # Determine cloud-init template source and process placeholders
-                # 1. If LXD profile has cloud-init, use it
-                # 2. Otherwise, use default template based on instance type
+                # Use cloud_init from classroom if available, otherwise use default template
                 # Then replace placeholders ({username}, {public_key}) with actual values
                 if ssh_keys and ssh_keys.get("public_key"):
                     from services.cloud_init_service import get_cloud_init_template
-                    
-                    # Get cloud-init from profile if available, otherwise None (uses default)
-                    profile_cloud_init = None
-                    if lxd_profile:
-                        try:
-                            profile = client.profiles.get(lxd_profile)
-                            profile_cloud_init = profile.config.get("user.user-data")
-                        except Exception:
-                            pass  # Profile not found yet, will be applied later
-                    
+
                     # Process template (replaces {username} and {public_key} placeholders)
                     instance_config["user.user-data"] = get_cloud_init_template(
-                        custom_template=profile_cloud_init,
+                        custom_template=cloud_init,
                         public_key=ssh_keys["public_key"],
                         username=vm_username,
                         instance_type=instance_type
@@ -213,36 +240,6 @@ class InstanceTaskService:
                 else:
                     client.containers.create(config_data, wait=True)
 
-                # Apply LXD profile if specified (only non-resource settings)
-                # Note: user.user-data (cloud-init) was already processed during instance creation
-                if lxd_profile:
-                    try:
-                        creation_tasks[task_id]["message"] = f"Applying profile '{lxd_profile}'..."
-                        profile = client.profiles.get(lxd_profile)
-                        instance = client.instances.get(name)
-                        
-                        # Merge profile config, but skip:
-                        # - Resource limits (cpu, memory) - from form
-                        # - user.user-data - already processed with SSH key during creation
-                        skip_keys = {"limits.cpu", "limits.memory", "user.user-data"}
-                        for key, value in profile.config.items():
-                            if key not in instance.config and key not in skip_keys:
-                                instance.config[key] = value
-                        
-                        # Merge profile devices, but skip root disk size since that's from form
-                        for dev_name, dev_config in profile.devices.items():
-                            if dev_name not in instance.devices:
-                                # Skip root device size override
-                                if dev_name == "root" and "size" in dev_config:
-                                    continue
-                                instance.devices[dev_name] = dev_config
-                        
-                        instance.save()
-                        creation_tasks[task_id]["message"] = f"Profile '{lxd_profile}' applied successfully"
-                    except Exception as profile_error:
-                        # Profile application failed, but instance was created
-                        creation_tasks[task_id]["message"] = f"Instance created, but profile '{lxd_profile}' failed: {str(profile_error)}"
-
                 creation_tasks[task_id]["progress"] = 90
                 creation_tasks[task_id]["message"] = "Finalizing instance..."
                 time.sleep(1)
@@ -280,14 +277,13 @@ class InstanceTaskService:
         lxd_settings: dict,
         cloud_init: Optional[str] = None,
         vm_username: str = "ubuntu",
-        image_fingerprint: Optional[str] = None,
-        lxd_profile: Optional[str] = None
+        image_fingerprint: Optional[str] = None
     ) -> str:
         """Start a new instance creation task and return task ID"""
         task_id = str(uuid.uuid4())
         thread = threading.Thread(
             target=InstanceTaskService.create_instance_background,
-            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_username, image_fingerprint, lxd_profile)
+            args=(task_id, name, cpu, ram, disk, instance_type, lxd_settings, cloud_init, vm_username, image_fingerprint)
         )
         thread.daemon = True
         thread.start()

@@ -226,9 +226,7 @@ def mock_classroom(db_session):
         username="ubuntu",
         image_type="virtual-machine",
         image_fingerprint="abc123def456",
-        image_alias="ubuntu/24.04",
         image_description="Ubuntu 24.04 LTS",
-        ssh_config_template="Host {vm_name}\n    HostName {host_ip}\n    User {username}",
     )
     db_session.add(classroom)
     db_session.commit()

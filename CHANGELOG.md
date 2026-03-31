@@ -9,26 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Classroom Management** - Create reusable configurations with predefined images, LXD profiles, and SSH templates
-- **LXD Profile Management** - Full CRUD UI for managing LXD profiles with CPU, RAM, disk, and cloud-init settings
 - **Container Support** - Bulk creation now supports both VMs and containers with density-aware resource checks
 - **Over-commit Option** - Allow resource over-commitment for high-density container deployments
-- **Instance Type Display** - Shows selected instance type (VM/Container) in creation forms
-- **Help Links** - Added informational links for LXD container vs VM selection
+- **SSH Local Port Forwards** - Configure port forwarding rules (e.g., `8080:localhost:80`) in Classroom settings
+- **Cloud-init Validation** - Server-side validation ensures templates have required placeholders (`{username}`, `{public_key}`)
 
 ### Changed
-- **Refactored Settings** - Merged VM/Container defaults and SSH templates into unified Classroom model
-- **Cloud-init Templates** - Separate default templates for VMs (with swap) and containers (with MOTD)
-- **Pre-flight Checks** - Container density factor (4x) applied for more accurate resource estimation
-- **Delete Confirmations** - Modal dialogs for deleting classrooms and profiles (consistent with dashboard)
-- **Profile Protection** - Cannot delete LXD profiles in use by classrooms or the 'default' profile
-- **Username Required** - Default username is now mandatory in classroom configuration
+- **Removed LXD Profiles** - Eliminated LXD Profile management; cloud-init now stored directly in Classroom model
+- **Classroom Model** - Replaced `lxd_profile` and `ssh_config_template` columns with `cloud_init` and `local_forwards`
+- **Cloud-init Editor** - Moved cloud-init template editor to Classroom page with type-specific default templates
+- **SSH Config Generation** - Uses hard-coded default template; local forwards appended automatically
+- **Instance Creation** - Now uses cloud-init from Classroom object instead of LXD profile
+- **Resource Defaults** - Hard-coded defaults for CPU (2), RAM (4GB), Disk (20GB) instead of profile-based
+- **Code Reuse** - Refactored bulk operations to use shared `wait_for_task()` from instance tasks
+- **Code Reuse** - Consolidated classroom validation into single `validateClassroomPayload()` function
+- **Form Behavior** - Cloud-init and image fields only reset when instance type changes (not on edit)
 
 ### Removed
 - **Swap Setting** - Removed dedicated swap field; swap now configured exclusively via cloud-init templates
-- **Standalone Settings** - VM defaults, container defaults, and connection templates tabs removed from Settings
+- **SSH Config Template Editor** - Removed editable SSH config template from Classroom settings
+
+### Fixed
+- **Dark Mode** - Fixed select dropdown arrow visibility with custom SVG icon
+- **Classroom Edit** - Fixed unwanted reset of cloud-init and image fields when editing
 
 ### Security
-- **Profile Deletion Protection** - Application-level foreign key constraint prevents deleting profiles in use
+- **Cloud-init Validation** - Prevents saving templates with missing required placeholders
 
 
 ## [v0.2.0] - 2026-03-25

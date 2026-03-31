@@ -97,9 +97,14 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="18"
+                                <textarea class="form-control font-monospace" id="cc-cloud-init" rows="12"
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
+                                <hr class="my-3">
+                                <label class="form-label">SSH Local Port Forwards</label>
+                                <textarea class="form-control font-monospace" id="cc-local-forwards" rows="5"
+                                          placeholder="8080:localhost:80&#10;9000:localhost:3000"></textarea>
+                                <small class="text-muted">One per line in format: <code>sourcePort:localhost:targetPort</code></small>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="saveClassroom()">
@@ -161,9 +166,14 @@
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="18"
+                                <textarea class="form-control font-monospace" id="cn-cloud-init" rows="12"
                                         placeholder="# cloud-config"></textarea>
                                 <small class="text-muted">Placeholders <code>{username}</code>, <code>{public_key}</code> are rendered at instance creation time.</small>
+                                <hr class="my-3">
+                                <label class="form-label">SSH Local Port Forwards</label>
+                                <textarea class="form-control font-monospace" id="cn-local-forwards" rows="5"
+                                          placeholder="8080:localhost:80&#10;9000:localhost:3000"></textarea>
+                                <small class="text-muted">One per line in format: <code>sourcePort:localhost:targetPort</code></small>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="createClassroom()">

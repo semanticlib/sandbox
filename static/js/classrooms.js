@@ -150,6 +150,7 @@ async function selectClassroom(id) {
         document.getElementById('cc-username').value = c.username;
         document.getElementById('cc-image-type').value = c.image_type;
         document.getElementById('cc-cloud-init').value = c.cloud_init || '';
+        document.getElementById('cc-local-forwards').value = c.local_forwards || '';
         document.getElementById('cc-image-fingerprint').value = c.image_fingerprint || '';
         document.getElementById('cc-image-alias').value = c.image_alias || '';
         document.getElementById('cc-image-description').value = c.image_description || '';
@@ -169,6 +170,7 @@ async function saveClassroom() {
         username: document.getElementById('cc-username').value.trim(),
         image_type: document.getElementById('cc-image-type').value,
         cloud_init: document.getElementById('cc-cloud-init').value || null,
+        local_forwards: document.getElementById('cc-local-forwards').value || null,
         image_fingerprint: document.getElementById('cc-image-fingerprint').value || null,
         image_alias: document.getElementById('cc-image-alias').value || null,
         image_description: document.getElementById('cc-image-description').value || null,
@@ -215,6 +217,7 @@ async function createClassroom() {
         username,
         image_type: document.getElementById('cn-image-type').value,
         cloud_init: document.getElementById('cn-cloud-init').value || null,
+        local_forwards: document.getElementById('cn-local-forwards').value || null,
         image_fingerprint: document.getElementById('cn-image-fingerprint').value || null,
         image_alias: document.getElementById('cn-image-alias').value || null,
         image_description: document.getElementById('cn-image-description').value || null,
@@ -295,7 +298,7 @@ async function showNewClassroomForm() {
     document.getElementById('classroom-alert').style.display = 'none';
 
     // Clear fields
-    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-cloud-init']
+    ['cn-name', 'cn-username', 'cn-image-description', 'cn-image-fingerprint', 'cn-image-alias', 'cn-cloud-init', 'cn-local-forwards']
         .forEach(id => { document.getElementById(id).value = ''; });
 
     // Deselect list item

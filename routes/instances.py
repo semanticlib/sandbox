@@ -726,6 +726,9 @@ async def download_ssh_config(
     from services.ssh_config_service import DEFAULT_SSH_CONFIG_TEMPLATE
     ssh_template = DEFAULT_SSH_CONFIG_TEMPLATE
 
+    # Get local forwards from classroom
+    local_forwards = classroom.local_forwards if classroom and classroom.local_forwards else None
+
     # Get VM IP address
     from services.lxd_service import LXDService
     lxd_service = LXDService(db)
@@ -751,7 +754,7 @@ async def download_ssh_config(
             pass
 
     # Generate SSH config files with templates
-    create_ssh_config_files(instance_name, keys, username, vm_ip, ssh_template)
+    create_ssh_config_files(instance_name, keys, username, vm_ip, ssh_template, local_forwards)
 
     # Create zip file in memory (with path traversal protection)
     from services.ssh_key_service import _safe_instance_path

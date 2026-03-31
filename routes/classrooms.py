@@ -89,6 +89,7 @@ async def get_classrooms(db: Session = Depends(get_db)):
                     "username": c.username,
                     "image_type": c.image_type,
                     "cloud_init": c.cloud_init or "",
+                    "local_forwards": c.local_forwards or "",
                     "image_fingerprint": c.image_fingerprint,
                     "image_alias": c.image_alias,
                     "image_description": c.image_description,
@@ -117,6 +118,7 @@ async def get_classroom(classroom_id: int, db: Session = Depends(get_db)):
                 "username": classroom.username,
                 "image_type": classroom.image_type,
                 "cloud_init": classroom.cloud_init or "",
+                "local_forwards": classroom.local_forwards or "",
                 "image_fingerprint": classroom.image_fingerprint,
                 "image_alias": classroom.image_alias,
                 "image_description": classroom.image_description,
@@ -151,6 +153,7 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
             username=username,
             image_type=data.get("image_type", "container"),
             cloud_init=data.get("cloud_init"),
+            local_forwards=data.get("local_forwards"),
             image_fingerprint=data.get("image_fingerprint"),
             image_alias=data.get("image_alias"),
             image_description=data.get("image_description"),
@@ -167,6 +170,7 @@ async def create_classroom(request: Request, db: Session = Depends(get_db)):
                 "username": classroom.username,
                 "image_type": classroom.image_type,
                 "cloud_init": classroom.cloud_init or "",
+                "local_forwards": classroom.local_forwards or "",
                 "image_fingerprint": classroom.image_fingerprint,
                 "image_alias": classroom.image_alias,
                 "image_description": classroom.image_description,
@@ -203,6 +207,7 @@ async def update_classroom(classroom_id: int, request: Request, db: Session = De
 
         classroom.image_type = data.get("image_type", classroom.image_type)
         classroom.cloud_init = data.get("cloud_init")
+        classroom.local_forwards = data.get("local_forwards")
         classroom.image_fingerprint = data.get("image_fingerprint")
         classroom.image_alias = data.get("image_alias")
         classroom.image_description = data.get("image_description")
@@ -218,6 +223,7 @@ async def update_classroom(classroom_id: int, request: Request, db: Session = De
                 "username": classroom.username,
                 "image_type": classroom.image_type,
                 "cloud_init": classroom.cloud_init or "",
+                "local_forwards": classroom.local_forwards or "",
                 "image_fingerprint": classroom.image_fingerprint,
                 "image_alias": classroom.image_alias,
                 "image_description": classroom.image_description,
